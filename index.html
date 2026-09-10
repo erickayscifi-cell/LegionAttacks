@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Legion Targeter</title>
+<meta name="description" content="Chance-to-kill calculator for Star Wars: Legion." />
+<link rel="stylesheet" href="style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>🎲</text></svg>">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="brand">Legion Targeter</div>
+    <div class="modes">
+      <a class="link active" href="index.html">Calculator</a>
+      <a class="link" href="about.html">About</a>
+    </div>
+  </nav>
+  <header class="app-header">
+    <div class="header-inner">
+      <h1>Legion Targeter</h1>
+      <p class="subtitle">Chance-to-kill calculator for Star Wars: Legion — sequence multiple attacks against one defender and track a limited token pool across them.</p>
+    </div>
+    <button id="gearBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+  </header>
+
+  <div id="settingsPanel" class="settings-panel hidden">
+    <h3>Settings</h3>
+    <label>Simulation trials
+      <select id="trialsSelect">
+        <option value="5000">5,000 (fast)</option>
+        <option value="20000" selected>20,000 (default)</option>
+        <option value="50000">50,000 (precise)</option>
+        <option value="100000">100,000 (slow, most precise)</option>
+      </select>
+    </label>
+    <button id="closeSettings" class="secondary-btn">Close</button>
+  </div>
+
+  <main class="layout">
+    <section class="panel defender-panel">
+      <h2>Defender</h2>
+
+      <div class="field-row">
+        <label class="field">Health
+          <input type="number" id="def-health" min="1" value="6" />
+        </label>
+        <label class="field">Defense Die
+          <select id="def-defenseDie">
+            <option value="white">White</option>
+            <option value="red">Red</option>
+          </select>
+        </label>
+        <label class="field">Defense Surge
+          <select id="def-defenseSurgeConv">
+            <option value="none">None</option>
+            <option value="block">→ Block</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field">Cover
+          <select id="def-cover">
+            <option value="none">None</option>
+            <option value="light">Light</option>
+            <option value="heavy">Heavy</option>
+          </select>
+        </label>
+        <label class="field checkbox-field">
+          <input type="checkbox" id="def-lowProfile" /> Low Profile
+        </label>
+      </div>
+
+      <h3>Keywords</h3>
+      <div class="field-row">
+        <label class="field checkbox-field">
+          <input type="checkbox" id="def-armorEnabled" /> Armor
+        </label>
+        <label class="field">Armor X <span class="hint">(blank = unlimited)</span>
+          <input type="number" id="def-armorX" min="0" placeholder="∞" />
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field checkbox-field">
+          <input type="checkbox" id="def-impervious" /> Impervious
+        </label>
+        <label class="field">Danger Sense X
+          <input type="number" id="def-dangerSenseX" min="0" value="0" />
+        </label>
+        <label class="field">Uncanny Luck X
+          <input type="number" id="def-uncannyLuckX" min="0" value="0" />
+        </label>
+        <label class="field">Upgrade Defense Dice X
+          <input type="number" id="def-upgradeX" min="0" value="0" />
+        </label>
+      </div>
+
+      <h3>Token Pool <span class="hint">(shared across all attacks below, depletes as spent)</span></h3>
+      <div class="field-row">
+        <label class="field">Dodge
+          <input type="number" id="def-dodge" min="0" value="0" />
+        </label>
+        <label class="field">Shield
+          <input type="number" id="def-shield" min="0" value="0" />
+        </label>
+        <label class="field">Suppression
+          <input type="number" id="def-suppression" min="0" value="0" />
+        </label>
+        <label class="field">Surge <span class="hint">(defense)</span>
+          <input type="number" id="def-surge" min="0" value="0" />
+        </label>
+      </div>
+    </section>
+
+    <section class="panel attacks-panel">
+      <div class="attacks-header">
+        <h2>Attacks</h2>
+        <button id="addAttackBtn" class="secondary-btn">+ Add Attack</button>
+      </div>
+      <div id="attacksList"></div>
+    </section>
+
+    <section class="panel results-panel">
+      <h2>Results</h2>
+      <p class="hint" id="trialsLabel"></p>
+      <div id="resultsList"></div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Fan-made tool, not affiliated with Atomic Mass Games / Disney / Lucasfilm. Dice probabilities and keyword resolution per the official Rules Reference — see README for documented simplifications.</p>
+  </footer>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
