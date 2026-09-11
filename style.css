@@ -314,6 +314,27 @@ body {
 }
 .kill-pct.cumulative { color: var(--accent); }
 
+.quote-line {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.quote-line::before { content: '“'; }
+.quote-line::after { content: '”'; }
+
+.total-summary {
+  border: 1px solid var(--accent-2);
+  background: var(--panel-alt);
+}
+.total-summary .stat-row { margin-bottom: 0; }
+.total-summary .value {
+  font-size: 20px;
+  color: var(--accent-2);
+}
+
 .app-footer {
   padding: 16px 24px 40px;
   color: var(--muted);
@@ -409,6 +430,14 @@ details.collapsible .details-body { padding-bottom: 8px; }
 .site-nav .brand {
   font-weight: 700;
   letter-spacing: 0.5px;
+}
+.site-nav .brand-subtitle {
+  font-weight: 400;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0;
+  margin-left: 4px;
 }
 .site-nav .modes {
   display: flex;

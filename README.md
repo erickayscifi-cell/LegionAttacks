@@ -23,10 +23,15 @@ on GitHub Pages.
 
 ## UI features
 
-- **Chance to Kill panel**: the results column is headed "Chance to Kill" and
-  each card also shows "Total expected wounds" — the average cumulative
-  damage dealt through that attack (not capped at the defender's health),
-  alongside "Avg wounds this attack" for that single attack in isolation.
+- **Chance to Kill panel**: the results column is headed "Chance to Kill".
+  A "Total expected wounds (all attacks)" card appears once at the bottom,
+  after every attack's card — the average cumulative damage dealt across
+  the whole sequence (not capped at the defender's health). Each individual
+  attack card still shows its own "Avg wounds this attack".
+- **Flavor quote**: a Star Wars quote appears under the heading, picked
+  from a bad/middle/good pool based on the final cumulative chance to kill
+  (≤15% bad, ≥90% good, otherwise middle) — see the `QUOTES_*` arrays in
+  `app.js` to add or re-tier your own.
 
 - **Theme**: Settings (gear icon) has a Dark / Light / System selector,
   saved in `localStorage` and applied on both pages before first paint (no

@@ -64,13 +64,8 @@
     labelRow.appendChild(document.createTextNode(labelText));
     if (hintText) labelRow.appendChild(hintIcon(hintText));
     wrap.appendChild(labelRow);
-    const row = el('div', { style: 'display:flex; gap:4px; align-items:center;' });
-    const minusBtn = el('button', { class: 'secondary-btn', type: 'button', style: 'padding:4px 8px;' });
-    minusBtn.textContent = '−';
     const input = el('input', { type: 'number', min: String(min) });
     input.value = value;
-    const plusBtn = el('button', { class: 'secondary-btn', type: 'button', style: 'padding:4px 8px;' });
-    plusBtn.textContent = '+';
 
     const commit = (v) => {
       let n = parseInt(v, 10);
@@ -79,14 +74,9 @@
       input.value = n;
       onChange(n);
     };
-    minusBtn.addEventListener('click', () => commit((parseInt(input.value, 10) || 0) - 1));
-    plusBtn.addEventListener('click', () => commit((parseInt(input.value, 10) || 0) + 1));
     input.addEventListener('input', () => commit(input.value));
 
-    row.appendChild(minusBtn);
-    row.appendChild(input);
-    row.appendChild(plusBtn);
-    wrap.appendChild(row);
+    wrap.appendChild(input);
     return wrap;
   }
 
@@ -402,8 +392,10 @@
 
     const resultsList = document.getElementById('resultsList');
     resultsList.innerHTML = '';
+    const quoteLine = document.getElementById('quoteLine');
     if (attackConfigs.length === 0) {
       resultsList.appendChild(el('p', { class: 'empty-state', html: 'Add at least one attack to see results.' }));
+      if (quoteLine) quoteLine.textContent = '';
       return;
     }
 
@@ -431,15 +423,51 @@
       woundRow.appendChild(woundVal);
       card.appendChild(woundRow);
 
-      const totalWoundRow = el('div', { class: 'stat-row' });
-      totalWoundRow.appendChild(el('span', { class: 'label', html: 'Total expected wounds' }));
-      const totalWoundVal = el('span', { class: 'value' });
-      totalWoundVal.textContent = res.avgCumulativeWounds.toFixed(2);
-      totalWoundRow.appendChild(totalWoundVal);
-      card.appendChild(totalWoundRow);
-
       resultsList.appendChild(card);
     });
+
+    // Total expected wounds only needs to appear once, for the full sequence.
+    const finalResult = output.perAttack[output.perAttack.length - 1];
+    const totalCard = el('div', { class: 'result-card total-summary' });
+    const totalRow = el('div', { class: 'stat-row' });
+    totalRow.appendChild(el('span', { class: 'label', html: 'Total expected wounds (all attacks)' }));
+    const totalVal = el('span', { class: 'value' });
+    totalVal.textContent = finalResult.avgCumulativeWounds.toFixed(2);
+    totalRow.appendChild(totalVal);
+    totalCard.appendChild(totalRow);
+    resultsList.appendChild(totalCard);
+
+    if (quoteLine) quoteLine.textContent = pickQuote(finalResult.chanceToKillCumulative * 100);
+  }
+
+  // ---------------- Star Wars flavor quotes ----------------
+  const QUOTES_BAD = [
+    'I have a bad feeling about this.',
+    'The odds of successfully surviving an attack on an Imperial Star Destroyer are approximately—',
+    'You might want to quit while you’re ahead.',
+  ];
+  const QUOTES_GOOD = [
+    'In my experience, there is no such thing as luck.',
+    'I have spoken.',
+    'I’ve got a really good feeling about this.',
+    'I call it luck.',
+    'I’m a lucky guy, Han.',
+  ];
+  const QUOTES_MIDDLE = [
+    'This is the way.',
+    'Do or do not. There is no try.',
+    'Rebellions are built on hope.',
+    'May the Force be with you.',
+    'We take the next chance, and the next, on and on until we win, or the chances are spent.',
+    'You got everything you need there, pal?',
+  ];
+
+  function pickQuote(killPct) {
+    let pool;
+    if (killPct <= 15) pool = QUOTES_BAD;
+    else if (killPct >= 90) pool = QUOTES_GOOD;
+    else pool = QUOTES_MIDDLE;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function escapeHtml(str) {
