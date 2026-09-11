@@ -21,6 +21,7 @@
 
   const state = {
     defender: {
+      name: '',
       health: 6,
       defenseDie: 'white',
       defenseSurgeConv: 'none',
@@ -199,9 +200,15 @@
 
   // ---------------- full export / import (defender + all attacks) ----------------
   const FULL_SCHEMA = 'legion-targeter-full';
+  const DEFENDER_SCHEMA = 'legion-targeter-defender';
+
+  function serializeDefenderFile(d) {
+    return Object.assign({ schema: DEFENDER_SCHEMA, version: 1 }, serializeDefender(d));
+  }
 
   function serializeDefender(d) {
     return {
+      name: d.name,
       health: d.health, defenseDie: d.defenseDie, defenseSurgeConv: d.defenseSurgeConv,
       cover: d.cover, coverX: d.coverX, lowProfile: d.lowProfile,
       armorEnabled: d.armorEnabled, armorX: d.armorX,
@@ -225,6 +232,7 @@
   function defenderFromData(dd) {
     dd = dd || {};
     return {
+      name: typeof dd.name === 'string' ? dd.name : '',
       health: Math.max(1, numOr(dd.health, 6)),
       defenseDie: dd.defenseDie === 'red' ? 'red' : 'white',
       defenseSurgeConv: dd.defenseSurgeConv === 'block' ? 'block' : 'none',
@@ -251,6 +259,7 @@
 
   function setDefenderFieldsFromState() {
     const d = state.defender;
+    document.getElementById('def-name').value = d.name || '';
     document.getElementById('def-health').value = d.health;
     document.getElementById('def-defenseDie').value = d.defenseDie;
     document.getElementById('def-defenseSurgeConv').value = d.defenseSurgeConv;
@@ -272,6 +281,13 @@
     document.getElementById('def-shield').value = d.shield;
     document.getElementById('def-suppression').value = d.suppression;
     document.getElementById('def-surge').value = d.surge;
+  }
+
+  function applyImportedDefenderData(data) {
+    if (!data || typeof data !== 'object') throw new Error('Not a valid defender file.');
+    state.defender = defenderFromData(data);
+    setDefenderFieldsFromState();
+    recompute();
   }
 
   function applyImportedFullState(data) {
@@ -296,8 +312,9 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function safeFilename(name) {
-    return (name || 'attacker').trim().replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '') || 'attacker';
+  function safeFilename(name, fallback) {
+    fallback = fallback || 'attacker';
+    return (name || fallback).trim().replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '') || fallback;
   }
 
   function renderAttackCard(attack) {
@@ -471,29 +488,54 @@
   }
 
   // ---------------- render: defender ----------------
+  // Note: every listener below reads/writes state.defender live (never a
+  // cached reference to the object) because Import All / loading a
+  // defender file replaces state.defender with a brand new object -- a
+  // cached reference would go stale and silently stop affecting the
+  // simulation after that happened.
   function wireDefenderInputs() {
-    const d = state.defender;
-    document.getElementById('def-health').addEventListener('input', (e) => { d.health = Math.max(1, parseInt(e.target.value, 10) || 1); recompute(); });
-    document.getElementById('def-defenseDie').addEventListener('change', (e) => { d.defenseDie = e.target.value; recompute(); });
-    document.getElementById('def-defenseSurgeConv').addEventListener('change', (e) => { d.defenseSurgeConv = e.target.value; recompute(); });
-    document.getElementById('def-cover').addEventListener('change', (e) => { d.cover = e.target.value; recompute(); });
-    document.getElementById('def-coverX').addEventListener('input', (e) => { d.coverX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-lowProfile').addEventListener('change', (e) => { d.lowProfile = e.target.checked; recompute(); });
-    document.getElementById('def-armorEnabled').addEventListener('change', (e) => { d.armorEnabled = e.target.checked; recompute(); });
-    document.getElementById('def-armorX').addEventListener('input', (e) => { d.armorX = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-impervious').addEventListener('change', (e) => { d.impervious = e.target.checked; recompute(); });
-    document.getElementById('def-dangerSenseX').addEventListener('input', (e) => { d.dangerSenseX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-uncannyLuckX').addEventListener('input', (e) => { d.uncannyLuckX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-upgradeX').addEventListener('input', (e) => { d.upgradeX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-immunePierce').addEventListener('change', (e) => { d.immunePierce = e.target.checked; recompute(); });
-    document.getElementById('def-immuneBlast').addEventListener('change', (e) => { d.immuneBlast = e.target.checked; recompute(); });
-    document.getElementById('def-block').addEventListener('change', (e) => { d.block = e.target.checked; recompute(); });
-    document.getElementById('def-nimble').addEventListener('change', (e) => { d.nimble = e.target.checked; recompute(); });
-    document.getElementById('def-outmaneuver').addEventListener('change', (e) => { d.outmaneuver = e.target.checked; recompute(); });
-    document.getElementById('def-dodge').addEventListener('input', (e) => { d.dodge = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-shield').addEventListener('input', (e) => { d.shield = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-suppression').addEventListener('input', (e) => { d.suppression = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
-    document.getElementById('def-surge').addEventListener('input', (e) => { d.surge = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-name').addEventListener('input', (e) => { state.defender.name = e.target.value; });
+    document.getElementById('defSaveBtn').addEventListener('click', () => {
+      downloadJson(safeFilename(state.defender.name, 'defender') + '.json', serializeDefenderFile(state.defender));
+    });
+    document.getElementById('defLoadBtn').addEventListener('click', () => {
+      document.getElementById('defLoadFile').click();
+    });
+    document.getElementById('defLoadFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          applyImportedDefenderData(JSON.parse(String(reader.result)));
+        } catch (err) {
+          window.alert('Could not load that file as a defender: ' + err.message);
+        }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+    document.getElementById('def-health').addEventListener('input', (e) => { state.defender.health = Math.max(1, parseInt(e.target.value, 10) || 1); recompute(); });
+    document.getElementById('def-defenseDie').addEventListener('change', (e) => { state.defender.defenseDie = e.target.value; recompute(); });
+    document.getElementById('def-defenseSurgeConv').addEventListener('change', (e) => { state.defender.defenseSurgeConv = e.target.value; recompute(); });
+    document.getElementById('def-cover').addEventListener('change', (e) => { state.defender.cover = e.target.value; recompute(); });
+    document.getElementById('def-coverX').addEventListener('input', (e) => { state.defender.coverX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-lowProfile').addEventListener('change', (e) => { state.defender.lowProfile = e.target.checked; recompute(); });
+    document.getElementById('def-armorEnabled').addEventListener('change', (e) => { state.defender.armorEnabled = e.target.checked; recompute(); });
+    document.getElementById('def-armorX').addEventListener('input', (e) => { state.defender.armorX = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-impervious').addEventListener('change', (e) => { state.defender.impervious = e.target.checked; recompute(); });
+    document.getElementById('def-dangerSenseX').addEventListener('input', (e) => { state.defender.dangerSenseX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-uncannyLuckX').addEventListener('input', (e) => { state.defender.uncannyLuckX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-upgradeX').addEventListener('input', (e) => { state.defender.upgradeX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-immunePierce').addEventListener('change', (e) => { state.defender.immunePierce = e.target.checked; recompute(); });
+    document.getElementById('def-immuneBlast').addEventListener('change', (e) => { state.defender.immuneBlast = e.target.checked; recompute(); });
+    document.getElementById('def-block').addEventListener('change', (e) => { state.defender.block = e.target.checked; recompute(); });
+    document.getElementById('def-nimble').addEventListener('change', (e) => { state.defender.nimble = e.target.checked; recompute(); });
+    document.getElementById('def-outmaneuver').addEventListener('change', (e) => { state.defender.outmaneuver = e.target.checked; recompute(); });
+    document.getElementById('def-dodge').addEventListener('input', (e) => { state.defender.dodge = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-shield').addEventListener('input', (e) => { state.defender.shield = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-suppression').addEventListener('input', (e) => { state.defender.suppression = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-surge').addEventListener('input', (e) => { state.defender.surge = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
   }
 
   // ---------------- compute + render results ----------------

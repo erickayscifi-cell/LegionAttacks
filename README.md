@@ -41,8 +41,16 @@ on GitHub Pages.
 - **Full export / import**: Settings also has "Export All" / "Import All",
   which save or load the defender *and every attack* together as one
   `.json` file (`{"schema":"legion-targeter-full", ...}`) — for backing up
-  or sharing an entire matchup setup, as opposed to the per-attack
-  save/load below which handles one attacker at a time.
+  or sharing an entire matchup setup, as opposed to the per-attack and
+  per-defender save/load described below, which each handle one unit at a
+  time.
+- **Name / save / load the defender**: the Defender panel has an optional
+  Name field and its own 💾/📂 toolbar (next to the "Defender" heading) to
+  save or load just that one defender as a `.json` file
+  (`{"schema":"legion-targeter-defender", ...}`) — handy for a recurring
+  opponent (e.g. "Rebel Troopers w/ Nimble") you want to reuse across
+  sessions or matchups without re-entering every field, independent of
+  whatever attacks happen to be loaded at the time.
 - **Compact layout**: each attack's Tokens and Keywords are collapsed
   behind `<details>` sections (a small badge shows how many are non-zero),
   and they auto-expand if the attack already has any of them set — e.g.

@@ -94,6 +94,7 @@ global.document = {
 // Register every element referenced by app.js via getElementById, matching index.html.
 const ids = [
   'gearBtn', 'settingsPanel', 'closeSettings', 'trialsSelect', 'themeSelect',
+  'def-name', 'defSaveBtn', 'defLoadBtn', 'defLoadFile',
   'def-health', 'def-defenseDie', 'def-defenseSurgeConv', 'def-cover', 'def-coverX', 'def-lowProfile',
   'def-armorEnabled', 'def-armorX', 'def-impervious', 'def-dangerSenseX', 'def-uncannyLuckX',
   'def-upgradeX', 'def-immunePierce', 'def-immuneBlast', 'def-block', 'def-nimble', 'def-outmaneuver',

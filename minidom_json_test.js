@@ -56,6 +56,7 @@ global.document = {
 };
 const ids = [
   'gearBtn', 'settingsPanel', 'closeSettings', 'trialsSelect', 'themeSelect',
+  'def-name', 'defSaveBtn', 'defLoadBtn', 'defLoadFile',
   'def-health', 'def-defenseDie', 'def-defenseSurgeConv', 'def-cover', 'def-coverX', 'def-lowProfile',
   'def-armorEnabled', 'def-armorX', 'def-impervious', 'def-dangerSenseX', 'def-uncannyLuckX',
   'def-upgradeX', 'def-immunePierce', 'def-immuneBlast', 'def-block', 'def-nimble', 'def-outmaneuver',
@@ -159,6 +160,33 @@ setTimeout(() => {
       if (importedName !== 'Imported Solo Attacker') throw new Error('Full import attack name mismatch');
       console.log('full import defender health/dodge:', idRegistry['def-health'].value, idRegistry['def-dodge'].value, '| attack count:', importedCards.length, '| name:', importedName);
       console.log('ALL FULL EXPORT/IMPORT CHECKS PASSED');
+
+      // 5) Standalone defender save/load: name it, tweak a field, save it,
+      //    mutate the export, "upload" it, and confirm both the name field
+      //    and the tweaked field landed (independent of the attack list).
+      idRegistry['def-name'].value = 'Heavy Weapon Team';
+      idRegistry['def-name'].dispatchEvent({ type: 'input' });
+      idRegistry['def-suppression'].value = '4';
+      idRegistry['def-suppression'].dispatchEvent({ type: 'input' });
+
+      idRegistry['defSaveBtn'].click();
+      const defExport = JSON.parse(lastBlobContent);
+      if (defExport.schema !== 'legion-targeter-defender') throw new Error('Defender export missing schema tag');
+      if (defExport.name !== 'Heavy Weapon Team') throw new Error('Defender export did not capture the name');
+      if (String(defExport.suppression) !== '4') throw new Error('Defender export did not capture the suppression edit');
+      console.log('defender export name:', defExport.name, '| suppression:', defExport.suppression);
+
+      const defImport = Object.assign({}, defExport, { name: 'Loaded Defender', health: 11, dodge: 3 });
+      idRegistry['defLoadFile'].files = [{ _text: JSON.stringify(defImport) }];
+      idRegistry['defLoadFile'].dispatchEvent({ type: 'change' });
+
+      if (idRegistry['def-name'].value !== 'Loaded Defender') throw new Error('Defender import did not update the name field');
+      if (idRegistry['def-health'].value !== 11) throw new Error('Defender import did not update health');
+      if (idRegistry['def-dodge'].value !== 3) throw new Error('Defender import did not update dodge');
+      const attackCountAfterDefenderLoad = attacksList.children.filter(c => c._className && c._className.includes('attack-card')).length;
+      if (attackCountAfterDefenderLoad !== importedCards.length) throw new Error('Loading a defender file should not touch the attack list');
+      console.log('defender import name/health/dodge:', idRegistry['def-name'].value, idRegistry['def-health'].value, idRegistry['def-dodge'].value, '| attacks untouched:', attackCountAfterDefenderLoad);
+      console.log('ALL DEFENDER SAVE/LOAD CHECKS PASSED');
     }, 50);
   }, 50);
 }, 400);

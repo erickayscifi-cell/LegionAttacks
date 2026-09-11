@@ -76,7 +76,21 @@
 
   <main class="layout">
     <section class="panel defender-panel">
-      <h2>Defender</h2>
+      <div class="attacks-header">
+        <h2>Defender</h2>
+        <div class="card-toolbar">
+          <button id="defSaveBtn" class="icon-mini-btn" type="button" title="Save this defender as a JSON file">💾</button>
+          <button id="defLoadBtn" class="icon-mini-btn" type="button" title="Load a defender JSON file">📂</button>
+          <input type="file" id="defLoadFile" accept="application/json,.json" style="display:none" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="field" style="flex: 1 1 100%;">
+          <span class="field-label">Name <span class="hint-icon" title="Optional label, saved with this defender" tabindex="0">?</span></span>
+          <input type="text" id="def-name" placeholder="e.g. Stormtrooper Squad" />
+        </label>
+      </div>
 
       <div class="field-row">
         <label class="field">Health

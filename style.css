@@ -443,6 +443,8 @@ details.collapsible .details-body { padding-bottom: 8px; }
 }
 .icon-mini-btn:hover { color: var(--accent-2); border-color: var(--accent-2); }
 .icon-mini-btn.danger:hover { color: var(--accent); border-color: var(--accent); }
+.icon-mini-btn:disabled { opacity: 0.35; cursor: default; }
+.icon-mini-btn:disabled:hover { color: var(--muted); border-color: var(--input-border); }
 
 /* ==========================================================================
    Site nav (about.html) and the Calculator/About links (also reused inside
