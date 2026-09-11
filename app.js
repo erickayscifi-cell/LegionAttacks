@@ -270,9 +270,9 @@
 
     // Dice pool
     const diceRow = el('div', { class: 'field-row' });
-    diceRow.appendChild(stepperField('Red dice', attack.red, 0, (v) => { attack.red = v; recompute(); }));
-    diceRow.appendChild(stepperField('Black dice', attack.black, 0, (v) => { attack.black = v; recompute(); }));
-    diceRow.appendChild(stepperField('White dice', attack.white, 0, (v) => { attack.white = v; recompute(); }));
+    diceRow.appendChild(stepperField('🟥 Red dice', attack.red, 0, (v) => { attack.red = v; recompute(); }));
+    diceRow.appendChild(stepperField('⬛ Black dice', attack.black, 0, (v) => { attack.black = v; recompute(); }));
+    diceRow.appendChild(stepperField('⬜ White dice', attack.white, 0, (v) => { attack.white = v; recompute(); }));
     card.appendChild(diceRow);
 
     const surgeRow = el('div', { class: 'field-row' });
@@ -430,6 +430,13 @@
       woundVal.textContent = res.avgWounds.toFixed(2);
       woundRow.appendChild(woundVal);
       card.appendChild(woundRow);
+
+      const totalWoundRow = el('div', { class: 'stat-row' });
+      totalWoundRow.appendChild(el('span', { class: 'label', html: 'Total expected wounds' }));
+      const totalWoundVal = el('span', { class: 'value' });
+      totalWoundVal.textContent = res.avgCumulativeWounds.toFixed(2);
+      totalWoundRow.appendChild(totalWoundVal);
+      card.appendChild(totalWoundRow);
 
       resultsList.appendChild(card);
     });

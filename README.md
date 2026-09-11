@@ -23,6 +23,11 @@ on GitHub Pages.
 
 ## UI features
 
+- **Chance to Kill panel**: the results column is headed "Chance to Kill" and
+  each card also shows "Total expected wounds" — the average cumulative
+  damage dealt through that attack (not capped at the defender's health),
+  alongside "Avg wounds this attack" for that single attack in isolation.
+
 - **Theme**: Settings (gear icon) has a Dark / Light / System selector,
   saved in `localStorage` and applied on both pages before first paint (no
   flash of the wrong theme).

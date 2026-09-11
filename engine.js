@@ -327,6 +327,7 @@
     const woundsPerAttack = attacks.map(() => 0);
     const woundHistogramPerAttack = attacks.map(() => ({}));
     const cumulativeWoundHistogram = attacks.map(() => ({}));
+    const cumulativeWoundsSum = new Array(n).fill(0); // uncapped, for the "total expected wounds" stat
 
     for (let t = 0; t < trials; t++) {
       const pool = {
@@ -351,6 +352,7 @@
 
         woundsPerAttack[i] += wounds;
         woundHistogramPerAttack[i][wounds] = (woundHistogramPerAttack[i][wounds] || 0) + 1;
+        cumulativeWoundsSum[i] += cumulativeWounds;
         const cw = Math.min(cumulativeWounds, defender.health);
         cumulativeWoundHistogram[i][cw] = (cumulativeWoundHistogram[i][cw] || 0) + 1;
       }
@@ -358,6 +360,7 @@
 
     const perAttack = attacks.map((a, i) => ({
       avgWounds: woundsPerAttack[i] / trials,
+      avgCumulativeWounds: cumulativeWoundsSum[i] / trials,
       chanceToKillCumulative: killAtOrBefore[i] / trials,
       woundHistogram: normalizeHistogram(woundHistogramPerAttack[i], trials),
       cumulativeWoundHistogram: normalizeHistogram(cumulativeWoundHistogram[i], trials),
