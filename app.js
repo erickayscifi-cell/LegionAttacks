@@ -52,14 +52,18 @@
     return e;
   }
 
+  function hintIcon(hintText) {
+    const q = el('span', { class: 'hint-icon', title: hintText, tabindex: '0' });
+    q.textContent = '?';
+    return q;
+  }
+
   function stepperField(labelText, value, min, onChange, hintText) {
     const wrap = el('label', { class: 'field' });
-    wrap.appendChild(document.createTextNode(labelText));
-    if (hintText) {
-      const h = el('span', { class: 'hint' });
-      h.textContent = ' ' + hintText;
-      wrap.appendChild(h);
-    }
+    const labelRow = el('span', { class: 'field-label' });
+    labelRow.appendChild(document.createTextNode(labelText));
+    if (hintText) labelRow.appendChild(hintIcon(hintText));
+    wrap.appendChild(labelRow);
     const row = el('div', { style: 'display:flex; gap:4px; align-items:center;' });
     const minusBtn = el('button', { class: 'secondary-btn', type: 'button', style: 'padding:4px 8px;' });
     minusBtn.textContent = '−';

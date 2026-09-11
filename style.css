@@ -197,6 +197,33 @@ body {
   letter-spacing: 0;
 }
 
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--input-border);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: help;
+}
+.hint-icon:hover, .hint-icon:focus {
+  background: var(--accent-2);
+  color: #fff;
+  outline: none;
+}
+
 .secondary-btn {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
