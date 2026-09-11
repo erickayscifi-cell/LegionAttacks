@@ -11,8 +11,11 @@
       surgeConv: 'none',
       tokens: { surge: 0, aim: 0, observe: 0 },
       criticalX: 0, preciseX: 0, sharpshooterX: 0, impactX: 0, pierceX: 0, downgradeX: 0, ramX: 0,
+      marksmanAim: 0, jarKaiDodge: 0,
       highVelocity: false,
       suppressive: false,
+      blast: false,
+      isMelee: false,
     }, overrides || {});
   }
 
@@ -22,6 +25,7 @@
       defenseDie: 'white',
       defenseSurgeConv: 'none',
       cover: 'none',
+      coverX: 0,
       lowProfile: false,
       armorEnabled: false,
       armorX: null, // null => unlimited
@@ -29,6 +33,11 @@
       dangerSenseX: 0,
       uncannyLuckX: 0,
       upgradeX: 0,
+      immunePierce: false,
+      immuneBlast: false,
+      block: false,
+      nimble: false,
+      outmaneuver: false,
       dodge: 0,
       shield: 0,
       suppression: 0,
@@ -123,8 +132,9 @@
   const ATTACKER_TOKEN_KEYS = ['surge', 'aim', 'observe'];
   const ATTACKER_KEYWORD_NUMERIC_KEYS = [
     'criticalX', 'preciseX', 'sharpshooterX', 'impactX', 'pierceX', 'downgradeX', 'ramX',
+    'marksmanAim', 'jarKaiDodge',
   ];
-  const ATTACKER_KEYWORD_BOOL_KEYS = ['highVelocity', 'suppressive'];
+  const ATTACKER_KEYWORD_BOOL_KEYS = ['highVelocity', 'suppressive', 'blast'];
   const ATTACKER_SCHEMA = 'legion-targeter-attacker';
 
   function countActive(attack, numericKeys, boolKeys) {
@@ -143,7 +153,9 @@
       tokens: Object.assign({ surge: 0, aim: 0, observe: 0 }, attack.tokens),
       criticalX: attack.criticalX, preciseX: attack.preciseX, sharpshooterX: attack.sharpshooterX,
       impactX: attack.impactX, pierceX: attack.pierceX, downgradeX: attack.downgradeX, ramX: attack.ramX,
-      highVelocity: attack.highVelocity, suppressive: attack.suppressive,
+      marksmanAim: attack.marksmanAim, jarKaiDodge: attack.jarKaiDodge,
+      highVelocity: attack.highVelocity, suppressive: attack.suppressive, blast: attack.blast,
+      isMelee: attack.isMelee,
     };
   }
 
@@ -165,7 +177,9 @@
       criticalX: numOr(data.criticalX, 0), preciseX: numOr(data.preciseX, 0),
       sharpshooterX: numOr(data.sharpshooterX, 0), impactX: numOr(data.impactX, 0),
       pierceX: numOr(data.pierceX, 0), downgradeX: numOr(data.downgradeX, 0), ramX: numOr(data.ramX, 0),
-      highVelocity: !!data.highVelocity, suppressive: !!data.suppressive,
+      marksmanAim: numOr(data.marksmanAim, 0), jarKaiDodge: numOr(data.jarKaiDodge, 0),
+      highVelocity: !!data.highVelocity, suppressive: !!data.suppressive, blast: !!data.blast,
+      isMelee: !!data.isMelee,
     };
   }
 
@@ -189,10 +203,13 @@
   function serializeDefender(d) {
     return {
       health: d.health, defenseDie: d.defenseDie, defenseSurgeConv: d.defenseSurgeConv,
-      cover: d.cover, lowProfile: d.lowProfile,
+      cover: d.cover, coverX: d.coverX, lowProfile: d.lowProfile,
       armorEnabled: d.armorEnabled, armorX: d.armorX,
       impervious: d.impervious, dangerSenseX: d.dangerSenseX, uncannyLuckX: d.uncannyLuckX,
-      upgradeX: d.upgradeX, dodge: d.dodge, shield: d.shield, suppression: d.suppression, surge: d.surge,
+      upgradeX: d.upgradeX,
+      immunePierce: d.immunePierce, immuneBlast: d.immuneBlast,
+      block: d.block, nimble: d.nimble, outmaneuver: d.outmaneuver,
+      dodge: d.dodge, shield: d.shield, suppression: d.suppression, surge: d.surge,
     };
   }
 
@@ -212,6 +229,7 @@
       defenseDie: dd.defenseDie === 'red' ? 'red' : 'white',
       defenseSurgeConv: dd.defenseSurgeConv === 'block' ? 'block' : 'none',
       cover: ['none', 'light', 'heavy'].includes(dd.cover) ? dd.cover : 'none',
+      coverX: numOr(dd.coverX, 0),
       lowProfile: !!dd.lowProfile,
       armorEnabled: !!dd.armorEnabled,
       armorX: (dd.armorX === null || dd.armorX === undefined || dd.armorX === '') ? null : numOr(dd.armorX, 0),
@@ -219,6 +237,11 @@
       dangerSenseX: numOr(dd.dangerSenseX, 0),
       uncannyLuckX: numOr(dd.uncannyLuckX, 0),
       upgradeX: numOr(dd.upgradeX, 0),
+      immunePierce: !!dd.immunePierce,
+      immuneBlast: !!dd.immuneBlast,
+      block: !!dd.block,
+      nimble: !!dd.nimble,
+      outmaneuver: !!dd.outmaneuver,
       dodge: numOr(dd.dodge, 0),
       shield: numOr(dd.shield, 0),
       suppression: numOr(dd.suppression, 0),
@@ -232,6 +255,7 @@
     document.getElementById('def-defenseDie').value = d.defenseDie;
     document.getElementById('def-defenseSurgeConv').value = d.defenseSurgeConv;
     document.getElementById('def-cover').value = d.cover;
+    document.getElementById('def-coverX').value = d.coverX;
     document.getElementById('def-lowProfile').checked = d.lowProfile;
     document.getElementById('def-armorEnabled').checked = d.armorEnabled;
     document.getElementById('def-armorX').value = d.armorX === null ? '' : d.armorX;
@@ -239,6 +263,11 @@
     document.getElementById('def-dangerSenseX').value = d.dangerSenseX;
     document.getElementById('def-uncannyLuckX').value = d.uncannyLuckX;
     document.getElementById('def-upgradeX').value = d.upgradeX;
+    document.getElementById('def-immunePierce').checked = d.immunePierce;
+    document.getElementById('def-immuneBlast').checked = d.immuneBlast;
+    document.getElementById('def-block').checked = d.block;
+    document.getElementById('def-nimble').checked = d.nimble;
+    document.getElementById('def-outmaneuver').checked = d.outmaneuver;
     document.getElementById('def-dodge').value = d.dodge;
     document.getElementById('def-shield').value = d.shield;
     document.getElementById('def-suppression').value = d.suppression;
@@ -282,6 +311,33 @@
 
     const toolbar = el('div', { class: 'card-toolbar' });
 
+    const idx0 = state.attacks.findIndex((a) => a.id === attack.id);
+    const moveUpBtn = el('button', { class: 'icon-mini-btn', title: 'Move this attack earlier in the sequence', type: 'button' });
+    moveUpBtn.textContent = '▲';
+    if (idx0 <= 0) moveUpBtn.setAttribute('disabled', '');
+    moveUpBtn.addEventListener('click', () => {
+      const idx = state.attacks.findIndex((a) => a.id === attack.id);
+      if (idx <= 0) return;
+      const [moved] = state.attacks.splice(idx, 1);
+      state.attacks.splice(idx - 1, 0, moved);
+      renderAttacks();
+      recompute();
+    });
+    toolbar.appendChild(moveUpBtn);
+
+    const moveDownBtn = el('button', { class: 'icon-mini-btn', title: 'Move this attack later in the sequence', type: 'button' });
+    moveDownBtn.textContent = '▼';
+    if (idx0 >= state.attacks.length - 1) moveDownBtn.setAttribute('disabled', '');
+    moveDownBtn.addEventListener('click', () => {
+      const idx = state.attacks.findIndex((a) => a.id === attack.id);
+      if (idx < 0 || idx >= state.attacks.length - 1) return;
+      const [moved] = state.attacks.splice(idx, 1);
+      state.attacks.splice(idx + 1, 0, moved);
+      renderAttacks();
+      recompute();
+    });
+    toolbar.appendChild(moveDownBtn);
+
     const dupBtn = el('button', { class: 'icon-mini-btn', title: 'Duplicate this attacker', type: 'button' });
     dupBtn.textContent = '⧉';
     dupBtn.addEventListener('click', () => {
@@ -293,15 +349,15 @@
     });
     toolbar.appendChild(dupBtn);
 
-    const downloadBtn = el('button', { class: 'icon-mini-btn', title: 'Download this attacker as JSON', type: 'button' });
-    downloadBtn.textContent = '⬇';
+    const downloadBtn = el('button', { class: 'icon-mini-btn', title: 'Save this attacker as a JSON file', type: 'button' });
+    downloadBtn.textContent = '💾';
     downloadBtn.addEventListener('click', () => {
       downloadJson(safeFilename(attack.name) + '.json', serializeAttack(attack));
     });
     toolbar.appendChild(downloadBtn);
 
-    const uploadBtn = el('button', { class: 'icon-mini-btn', title: 'Load an attacker JSON into this card', type: 'button' });
-    uploadBtn.textContent = '⬆';
+    const uploadBtn = el('button', { class: 'icon-mini-btn', title: 'Load an attacker JSON file into this card', type: 'button' });
+    uploadBtn.textContent = '📂';
     const fileInput = el('input', { type: 'file', accept: 'application/json,.json', style: 'display:none' });
     fileInput.addEventListener('change', () => {
       const file = fileInput.files && fileInput.files[0];
@@ -351,6 +407,7 @@
       { value: 'hit', label: '→ Hit' },
       { value: 'crit', label: '→ Crit' },
     ], (v) => { attack.surgeConv = v; recompute(); }));
+    surgeRow.appendChild(checkboxField('Melee attack', attack.isMelee, (v) => { attack.isMelee = v; recompute(); }));
     card.appendChild(surgeRow);
 
     // Tokens (collapsible)
@@ -401,7 +458,12 @@
     const kwRow3 = el('div', { class: 'field-row' });
     kwRow3.appendChild(checkboxField('High Velocity (no Dodge)', attack.highVelocity, (v) => { attack.highVelocity = v; recompute(); }));
     kwRow3.appendChild(checkboxField('Suppressive (adds 1 suppression after)', attack.suppressive, (v) => { attack.suppressive = v; recompute(); }));
+    kwRow3.appendChild(checkboxField('Blast (ignores cover, unless Immune: Blast)', attack.blast, (v) => { attack.blast = v; recompute(); }));
     kwBody.appendChild(kwRow3);
+    const kwRow4 = el('div', { class: 'field-row' });
+    kwRow4.appendChild(stepperField('Marksman: Aim spent', attack.marksmanAim, 0, (v) => { attack.marksmanAim = v; recompute(); }, '(Blank→Hit / Hit→Crit, smartly chosen each trial)'));
+    kwRow4.appendChild(stepperField('Jar\'Kai Mastery: Dodge spent', attack.jarKaiDodge, 0, (v) => { attack.jarKaiDodge = v; recompute(); }, '(same conversions; only applies on a Melee attack)'));
+    kwBody.appendChild(kwRow4);
     kwDetails.appendChild(kwBody);
     card.appendChild(kwDetails);
 
@@ -415,6 +477,7 @@
     document.getElementById('def-defenseDie').addEventListener('change', (e) => { d.defenseDie = e.target.value; recompute(); });
     document.getElementById('def-defenseSurgeConv').addEventListener('change', (e) => { d.defenseSurgeConv = e.target.value; recompute(); });
     document.getElementById('def-cover').addEventListener('change', (e) => { d.cover = e.target.value; recompute(); });
+    document.getElementById('def-coverX').addEventListener('input', (e) => { d.coverX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
     document.getElementById('def-lowProfile').addEventListener('change', (e) => { d.lowProfile = e.target.checked; recompute(); });
     document.getElementById('def-armorEnabled').addEventListener('change', (e) => { d.armorEnabled = e.target.checked; recompute(); });
     document.getElementById('def-armorX').addEventListener('input', (e) => { d.armorX = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
@@ -422,6 +485,11 @@
     document.getElementById('def-dangerSenseX').addEventListener('input', (e) => { d.dangerSenseX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
     document.getElementById('def-uncannyLuckX').addEventListener('input', (e) => { d.uncannyLuckX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
     document.getElementById('def-upgradeX').addEventListener('input', (e) => { d.upgradeX = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
+    document.getElementById('def-immunePierce').addEventListener('change', (e) => { d.immunePierce = e.target.checked; recompute(); });
+    document.getElementById('def-immuneBlast').addEventListener('change', (e) => { d.immuneBlast = e.target.checked; recompute(); });
+    document.getElementById('def-block').addEventListener('change', (e) => { d.block = e.target.checked; recompute(); });
+    document.getElementById('def-nimble').addEventListener('change', (e) => { d.nimble = e.target.checked; recompute(); });
+    document.getElementById('def-outmaneuver').addEventListener('change', (e) => { d.outmaneuver = e.target.checked; recompute(); });
     document.getElementById('def-dodge').addEventListener('input', (e) => { d.dodge = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
     document.getElementById('def-shield').addEventListener('input', (e) => { d.shield = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
     document.getElementById('def-suppression').addEventListener('input', (e) => { d.suppression = Math.max(0, parseInt(e.target.value, 10) || 0); recompute(); });
@@ -442,12 +510,18 @@
       defenseDie: d.defenseDie,
       defenseSurgeConv: d.defenseSurgeConv,
       cover: d.cover,
+      coverX: d.coverX,
       lowProfile: d.lowProfile,
       armor: { enabled: d.armorEnabled, x: d.armorEnabled ? (d.armorX === null ? Infinity : d.armorX) : 0 },
       impervious: d.impervious,
       dangerSenseX: d.dangerSenseX,
       uncannyLuckX: d.uncannyLuckX,
       upgradeDefenseDiceX: d.upgradeX,
+      immunePierce: d.immunePierce,
+      immuneBlast: d.immuneBlast,
+      block: d.block,
+      nimble: d.nimble,
+      outmaneuver: d.outmaneuver,
       tokenPool: { dodge: d.dodge, shield: d.shield, suppression: d.suppression, surge: d.surge },
     };
 
@@ -462,8 +536,12 @@
       pierceX: a.pierceX,
       downgradeX: a.downgradeX,
       ramX: a.ramX,
+      marksmanAim: a.marksmanAim,
+      jarKaiDodge: a.jarKaiDodge,
       highVelocity: a.highVelocity,
       suppressive: a.suppressive,
+      blast: a.blast,
+      isMelee: a.isMelee,
     }));
 
     document.getElementById('trialsLabel').textContent = attackConfigs.length

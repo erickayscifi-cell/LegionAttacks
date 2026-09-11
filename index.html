@@ -104,6 +104,10 @@
             <option value="heavy">Heavy</option>
           </select>
         </label>
+        <label class="field">
+          <span class="field-label">Cover X <span class="hint-icon" title="Cover X keyword: improves cover by X, stacks with terrain Cover" tabindex="0">?</span></span>
+          <input type="number" id="def-coverX" min="0" value="0" />
+        </label>
         <label class="field checkbox-field">
           <input type="checkbox" id="def-lowProfile" /> Low Profile
         </label>
@@ -133,6 +137,25 @@
             </label>
             <label class="field">Upgrade Defense Dice X
               <input type="number" id="def-upgradeX" min="0" value="0" />
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-block" /> Block
+            </label>
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-nimble" /> Nimble
+            </label>
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-outmaneuver" /> Outmaneuver
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-immunePierce" /> Immune: Pierce
+            </label>
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-immuneBlast" /> Immune: Blast
             </label>
           </div>
         </div>

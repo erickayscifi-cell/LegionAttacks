@@ -94,9 +94,10 @@ global.document = {
 // Register every element referenced by app.js via getElementById, matching index.html.
 const ids = [
   'gearBtn', 'settingsPanel', 'closeSettings', 'trialsSelect', 'themeSelect',
-  'def-health', 'def-defenseDie', 'def-defenseSurgeConv', 'def-cover', 'def-lowProfile',
+  'def-health', 'def-defenseDie', 'def-defenseSurgeConv', 'def-cover', 'def-coverX', 'def-lowProfile',
   'def-armorEnabled', 'def-armorX', 'def-impervious', 'def-dangerSenseX', 'def-uncannyLuckX',
-  'def-upgradeX', 'def-dodge', 'def-shield', 'def-suppression', 'def-surge',
+  'def-upgradeX', 'def-immunePierce', 'def-immuneBlast', 'def-block', 'def-nimble', 'def-outmaneuver',
+  'def-dodge', 'def-shield', 'def-suppression', 'def-surge',
   'addAttackBtn', 'attacksList', 'resultsList', 'trialsLabel', 'quoteLine',
   'exportAllBtn', 'importAllBtn', 'importAllFile',
 ];
@@ -160,11 +161,22 @@ setTimeout(() => {
     const resultsList = idRegistry['resultsList'];
     console.log('result cards after health edit + debounce:', resultsList.children.filter(c => c._className && c._className.includes('result-card')).length);
 
-    // Exercise the per-attack toolbar: duplicate, download, upload-click (no file chosen).
+    // Exercise the per-attack toolbar: move up/down, duplicate, download, upload-click (no file chosen).
     const firstCard = attacksList.children.find(c => c._className && c._className.includes('attack-card'));
     const toolbarBtns = firstCard.querySelectorAll('.icon-mini-btn');
-    console.log('toolbar buttons found on first card:', toolbarBtns.length, '(expect 4: duplicate/download/upload/remove)');
-    const [dupBtn, downloadBtn, uploadBtn] = toolbarBtns;
+    console.log('toolbar buttons found on first card:', toolbarBtns.length, '(expect 6: moveUp/moveDown/duplicate/download/upload/remove)');
+    const [moveUpBtn, moveDownBtn, dupBtn, downloadBtn, uploadBtn] = toolbarBtns;
+    if (!('disabled' in moveUpBtn._attrs)) throw new Error('First card\'s move-up button should be disabled');
+    moveDownBtn.click();
+    const namesAfterMove = attacksList.children
+      .filter(c => c._className && c._className.includes('attack-card'))
+      .map(c => c.children.find(x => x._className === 'attack-card-header').children.find(x => x._className === 'attack-name').value);
+    console.log('attack order after moving card 1 down:', namesAfterMove.join(', '));
+    if (namesAfterMove[1] !== 'Attack 1') throw new Error('Move-down did not reorder the attack list');
+    // Move it back up so the rest of the test's card-1 assumptions still hold.
+    const cardNowSecond = attacksList.children.filter(c => c._className && c._className.includes('attack-card'))[1];
+    cardNowSecond.querySelectorAll('.icon-mini-btn')[0].click();
+
     dupBtn.click();
     console.log('attack cards after duplicate:', attacksList.children.filter(c => c._className && c._className.includes('attack-card')).length);
     downloadBtn.click();

@@ -4,33 +4,47 @@
 // Implements the official Attack Sequence (Rules Reference / Core Rulebook)
 // as closely as is practical for a "core keywords" fan calculator:
 //   1. Roll Attack Dice, Reroll Dice (Aim/Observe/Precise, round-based),
-//      Convert Attack Surges (Critical X), Ram X (blanks then hits -> crit).
-//   2. Apply Dodge and Cover: Low Profile cancels 1 hit outright while any
-//      Cover is present; a unit's own Suppression tokens improve its
-//      effective Cover by 1 tier; roll a Cover Pool (1 white defense die
-//      per remaining hit) and cancel hits per light/heavy Cover; then
-//      spend Dodge tokens.
+//      Convert Attack Surges (Critical X), then Marksman (spend Aim) /
+//      Jar'Kai Mastery (spend the attacker's own Dodge, Melee only) may
+//      convert Blank->Hit or Hit->Crit -- see resolveAttack for the greedy
+//      per-trial priority this uses -- then Ram X (blanks then hits -> crit).
+//   2. Apply Dodge and Cover: a Melee attack gets no Cover at all (Ranged-
+//      only defense); otherwise Blast (unless Immune: Blast) removes cover
+//      entirely, else terrain Cover, the Cover X keyword, and a unit's own
+//      Suppression tokens (all improving effective cover, capped at heavy)
+//      combine and Sharpshooter X steps the tier back down; Low Profile
+//      cancels 1 hit outright if cover remains; roll a Cover Pool (1 white
+//      defense die per remaining hit) and cancel hits per light/heavy
+//      Cover; then spend Dodge tokens (Outmaneuver lets leftover Dodge
+//      also cancel Crits) -- Block and Nimble key off how many Dodge
+//      tokens were spent here.
 //   3. Modify Attack Dice: Impact X (hit->crit, only vs Armor), Armor X
-//      (cancel hits), Shield tokens (cancel 1 hit or crit each).
+//      (cancel hits), Shield tokens (cancel 1 hit or crit each, Ranged
+//      attacks only).
 //   4. Roll Defense Dice for remaining hits+crits (die count = hits+crits),
 //      applying Downgrade then Upgrade Defense Dice, Danger Sense bonus
-//      dice (tied to Suppression tokens held), and Impervious bonus dice
-//      (vs Pierce).
+//      dice (tied to Suppression tokens held, Ranged attacks only), and
+//      Impervious bonus dice (vs effective Pierce X, i.e. 0 if the
+//      defender is Immune: Pierce).
 //   5. Reroll (Uncanny Luck: blanks and any surge results that won't be
-//      converted, red dice prioritized), Convert Defense Surges (chart or
-//      Surge tokens), Modify Defense Dice (Pierce X cancels Block results).
+//      converted, red dice prioritized), Convert Defense Surges (chart,
+//      Block's own Surge:Block if it spent Dodge this attack, or Surge
+//      tokens), Modify Defense Dice (effective Pierce X cancels Block
+//      results).
 //   6. Compare Results: remaining Block results cancel crits first, then
 //      hits (mathematically equivalent to just subtracting total blocks
 //      from total hits+crits, since nothing downstream distinguishes them).
+//   7. After defending: Nimble regains 1 Dodge token if 1+ were spent.
 //
 // Cross-checked dice faces and mechanics against the official Rules
 // Reference and against github.com/dankraus/legion-roller (LegionRoller).
-// Documented simplifications: no hero-specific / conditional-regen
-// keywords (Nimble, Outmaneuver, Block, Deflect, Soresu Mastery, Guardian,
-// Backup, etc.), Shield tokens usable on any attack (not gated to Ranged
-// only), Cover Pool die color fixed to white (per RAW), Impervious modeled
-// as bonus defense dice (per current keyword glossary) rather than a
-// Pierce-reduction effect.
+// Documented simplifications: no conditional counter-attack keywords
+// (Deflect, Soresu Mastery -- these deal wounds back to the attacker, out
+// of scope for a chance-to-kill-the-defender calculator), no Guardian/
+// Backup (redirects an attack to a different unit), Shield tokens usable
+// on any attack (not gated to Ranged only), Cover Pool die color fixed to
+// white (per RAW), Impervious modeled as bonus defense dice (per current
+// keyword glossary) rather than a Pierce-reduction effect.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
@@ -113,15 +127,25 @@
    *   criticalX, preciseX, sharpshooterX, impactX, pierceX, downgradeX, ramX,
    *   highVelocity: bool,                // defender cannot spend Dodge
    *   suppressive: bool,                 // defender gains 1 Suppression token after this attack
+   *   blast: bool,                       // defender may not apply cover to this attack
+   *   isMelee: bool,                     // this is a Melee attack: no Cover, Shield, or Danger Sense for the defender
+   *   marksmanAim: int,                  // Aim tokens spent via Marksman (Blank->Hit / Hit->Crit), separate from tokens.aim
+   *   jarKaiDodge: int,                  // attacker's own Dodge tokens spent via Jar'Kai Mastery (Melee attacks only)
    * }
    * defender: {
    *   health, defenseDie: 'white'|'red', defenseSurgeConv: 'none'|'block',
    *   cover: 'none'|'light'|'heavy',
+   *   coverX: int,                       // Cover X keyword, adds to the cover tier (capped at heavy)
    *   armor: { enabled, x },             // x may be Infinity for unlimited "Armor"
    *   impervious: bool,
    *   dangerSenseX, uncannyLuckX,
    *   lowProfile: bool,
    *   upgradeDefenseDiceX: int,
+   *   immunePierce: bool,                // Immune: Pierce -- attacker's Pierce X has no effect
+   *   immuneBlast: bool,                 // Immune: Blast -- attacker's Blast has no effect
+   *   block: bool,                       // Block -- gains Surge:Block for the rest of the attack if it spends 1+ Dodge
+   *   nimble: bool,                      // Nimble -- regains 1 Dodge token after defending if it spent 1+
+   *   outmaneuver: bool,                 // Outmaneuver -- Dodge tokens may also cancel Crit results
    * }
    * pool: { dodge, shield, suppression, surge } -- persistent, mutated in place
    */
@@ -139,7 +163,7 @@
     let hits = dice.filter((d) => d.result === 'hit').length;
     let crits = dice.filter((d) => d.result === 'crit').length;
     let surges = dice.filter((d) => d.result === 'surge').length;
-    const blanksAfterReroll = dice.filter((d) => d.result === 'blank').length;
+    let blanksAfterReroll = dice.filter((d) => d.result === 'blank').length;
 
     // --- Convert Attack Surges (Critical X, then weapon chart / Surge tokens) ---
     const critX = attack.criticalX || 0;
@@ -158,6 +182,31 @@
       surges -= surgeTokens;
     }
 
+    // --- Marksman (spend Aim) / Jar'Kai Mastery (spend the attacker's own
+    // Dodge tokens, Melee attacks only): convert Blank->Hit or Hit->Crit,
+    // 1 point each (2 points spent as one of each nets a Blank->Crit, so
+    // that combo needs no separate code path). This is a greedy per-trial
+    // approximation of optimal play, not a full solver: with no apparent
+    // hit-cancelling defense in play it spends on Blank->Hit first (a
+    // guaranteed-positive conversion), but flips to Hit->Crit first
+    // whenever the defender has Cover, Armor, or a live Dodge pool, since
+    // only Crit results are immune to Cover Pool cancellation, Dodge
+    // spending, and Armor X.
+    let conversionBudget = (attack.marksmanAim || 0) + (attack.isMelee ? (attack.jarKaiDodge || 0) : 0);
+    if (conversionBudget > 0) {
+      const hasHitCancellingDefense = defender.cover !== 'none' || (defender.coverX || 0) > 0 ||
+        !!(defender.armor && defender.armor.enabled) || (pool.dodge || 0) > 0;
+      const spendCrit = () => {
+        const n = Math.min(conversionBudget, hits);
+        hits -= n; crits += n; conversionBudget -= n;
+      };
+      const spendHit = () => {
+        const n = Math.min(conversionBudget, blanksAfterReroll);
+        hits += n; blanksAfterReroll -= n; conversionBudget -= n;
+      };
+      if (hasHitCancellingDefense) { spendCrit(); spendHit(); } else { spendHit(); spendCrit(); }
+    }
+
     // --- Ram X: convert up to X blanks (post-reroll) to crit, then any
     //     leftover Ram budget converts hits to crit. ---
     if (attack.ramX) {
@@ -171,17 +220,30 @@
     }
 
     // --- Apply Dodge and Cover ---
-    // Low Profile cancels 1 hit outright whenever any Cover is present,
-    // applied before the Cover Pool is rolled (so it also shrinks the pool).
-    const coverBaseTier = defender.cover === 'heavy' ? 2 : defender.cover === 'light' ? 1 : 0;
-    if (coverBaseTier > 0 && defender.lowProfile && hits > 0) {
+    // A defending unit does not benefit from Cover at all against a Melee
+    // attack (Cover, and everything that improves it, is a Ranged-only
+    // defense). Otherwise, Blast lets the defender apply no cover either,
+    // unless it has Immune: Blast (in which case Blast has no effect on it).
+    const blastNegatesCover = !!attack.blast && !defender.immuneBlast;
+    let coverTier = 0;
+    if (!attack.isMelee && !blastNegatesCover) {
+      // Terrain cover, the Cover X keyword, and a unit's own Suppression
+      // tokens (which improve effective cover by 1 tier) all stack, capped
+      // at heavy; Sharpshooter X then steps the tier back down. Low Profile
+      // is evaluated against this same final tier, since its RAW wording is
+      // negated whenever Sharpshooter (or Blast, handled above) removes the
+      // defender's cover entirely.
+      const terrainTier = defender.cover === 'heavy' ? 2 : defender.cover === 'light' ? 1 : 0;
+      const coverXBump = defender.coverX || 0;
+      const suppressionBump = (pool.suppression || 0) > 0 ? 1 : 0;
+      const coverTierBeforeSharpshooter = Math.min(2, terrainTier + coverXBump + suppressionBump);
+      coverTier = Math.max(0, coverTierBeforeSharpshooter - (attack.sharpshooterX || 0));
+    }
+    // Low Profile cancels 1 hit outright whenever the defender still has
+    // cover, applied before the Cover Pool is rolled (so it also shrinks it).
+    if (coverTier > 0 && defender.lowProfile && hits > 0) {
       hits -= 1;
     }
-    // A unit's own Suppression tokens improve its effective Cover by 1 tier
-    // (capped at heavy), then Sharpshooter X steps the tier back down.
-    const suppressionBump = (pool.suppression || 0) > 0 ? 1 : 0;
-    const coverTierBeforeSharpshooter = Math.min(2, coverBaseTier + suppressionBump);
-    const coverTier = Math.max(0, coverTierBeforeSharpshooter - (attack.sharpshooterX || 0));
     if (coverTier > 0 && hits > 0) {
       // Roll a Cover Pool: 1 white defense die for every current hit result.
       let cancel = 0;
@@ -193,12 +255,27 @@
       hits -= Math.min(hits, cancel);
     }
 
+    // Spend Dodge tokens: normally only against hits; Outmaneuver also lets
+    // leftover Dodge tokens cancel Crit results. Track how many were spent
+    // for Block (Surge:Block for the rest of this attack) and Nimble (regain
+    // 1 Dodge token after defending).
     const dodgeAllowed = !attack.highVelocity;
-    if (dodgeAllowed && pool.dodge > 0 && hits > 0) {
-      const spend = Math.min(pool.dodge, hits);
-      pool.dodge -= spend;
-      hits -= spend;
+    let dodgeSpent = 0;
+    if (dodgeAllowed && pool.dodge > 0) {
+      const spendOnHits = Math.min(pool.dodge, hits);
+      pool.dodge -= spendOnHits;
+      hits -= spendOnHits;
+      dodgeSpent += spendOnHits;
+      if (defender.outmaneuver && pool.dodge > 0 && crits > 0) {
+        const spendOnCrits = Math.min(pool.dodge, crits);
+        pool.dodge -= spendOnCrits;
+        crits -= spendOnCrits;
+        dodgeSpent += spendOnCrits;
+      }
     }
+    // Block: gains Surge:Block for the remainder of this attack if it spent
+    // 1 or more Dodge tokens (stacks with any chart-based Surge conversion).
+    const blockSurgeToBlock = !!defender.block && dodgeSpent > 0;
 
     // --- Modify Attack Dice: Impact X, then Armor X, then Shield tokens ---
     const armorEnabled = !!(defender.armor && defender.armor.enabled);
@@ -211,7 +288,9 @@
       const armorX = defender.armor.x === undefined || defender.armor.x === null ? Infinity : defender.armor.x;
       hits -= Math.min(hits, armorX);
     }
-    if (pool.shield > 0) {
+    // Shield tokens can only be spent against a Ranged attack -- a Melee
+    // attack also denies the defender's Cover (handled above) and Guardian.
+    if (!attack.isMelee && pool.shield > 0) {
       const shieldOnCrits = Math.min(crits, pool.shield);
       crits -= shieldOnCrits;
       pool.shield -= shieldOnCrits;
@@ -244,11 +323,17 @@
       return c;
     });
 
-    const dangerSenseBonus = Math.min(pool.suppression || 0, defender.dangerSenseX || 0);
+    // Danger Sense X is also a Ranged-only defense (per its RAW wording).
+    const dangerSenseBonus = attack.isMelee ? 0 : Math.min(pool.suppression || 0, defender.dangerSenseX || 0);
     for (let i = 0; i < dangerSenseBonus; i++) defColors.push(defender.defenseDie);
 
-    if (defender.impervious && attack.pierceX) {
-      for (let i = 0; i < attack.pierceX; i++) defColors.push(defender.defenseDie);
+    // Immune: Pierce means the attacker's Pierce X has no effect on this
+    // defender at all, so treat it as 0 for both Impervious's bonus dice and
+    // the later Block-cancelling step.
+    const effectivePierceX = defender.immunePierce ? 0 : (attack.pierceX || 0);
+
+    if (defender.impervious && effectivePierceX) {
+      for (let i = 0; i < effectivePierceX; i++) defColors.push(defender.defenseDie);
     }
 
     let defDice = defColors.map((c) => ({ color: c, result: rollDefenseDie(c) }));
@@ -259,7 +344,7 @@
     let luckLeft = defender.uncannyLuckX || 0;
     if (luckLeft > 0) {
       const totalSurges = defDice.filter((d) => d.result === 'surge').length;
-      const excessSurgeCount = defender.defenseSurgeConv === 'block'
+      const excessSurgeCount = (defender.defenseSurgeConv === 'block' || blockSurgeToBlock)
         ? 0
         : Math.max(0, totalSurges - (pool.surge || 0));
       let excessSurgeBudget = excessSurgeCount;
@@ -284,7 +369,7 @@
 
     // Convert Defense Surges: weapon/unit chart first, then Surge tokens
     // from the persistent pool for any surges the chart doesn't convert.
-    if (defender.defenseSurgeConv === 'block') {
+    if (defender.defenseSurgeConv === 'block' || blockSurgeToBlock) {
       blocks += defSurges;
       defSurges = 0;
     }
@@ -295,9 +380,10 @@
       defSurges -= spend;
     }
 
-    // Modify Defense Dice: Pierce X cancels up to X Block results.
-    if (attack.pierceX) {
-      blocks = Math.max(0, blocks - attack.pierceX);
+    // Modify Defense Dice: Pierce X cancels up to X Block results (unless
+    // the defender is Immune: Pierce, handled above via effectivePierceX).
+    if (effectivePierceX) {
+      blocks = Math.max(0, blocks - effectivePierceX);
     }
 
     // Compare Results: remaining Block results cancel crits first, then hits.
@@ -311,6 +397,11 @@
 
     if (attack.suppressive) {
       pool.suppression = (pool.suppression || 0) + 1;
+    }
+
+    // Nimble: after defending, regain 1 Dodge token if 1 or more were spent.
+    if (defender.nimble && dodgeSpent > 0) {
+      pool.dodge = (pool.dodge || 0) + 1;
     }
 
     return woundsThisAttack;

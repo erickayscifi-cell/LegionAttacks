@@ -56,9 +56,10 @@ global.document = {
 };
 const ids = [
   'gearBtn', 'settingsPanel', 'closeSettings', 'trialsSelect', 'themeSelect',
-  'def-health', 'def-defenseDie', 'def-defenseSurgeConv', 'def-cover', 'def-lowProfile',
+  'def-health', 'def-defenseDie', 'def-defenseSurgeConv', 'def-cover', 'def-coverX', 'def-lowProfile',
   'def-armorEnabled', 'def-armorX', 'def-impervious', 'def-dangerSenseX', 'def-uncannyLuckX',
-  'def-upgradeX', 'def-dodge', 'def-shield', 'def-suppression', 'def-surge',
+  'def-upgradeX', 'def-immunePierce', 'def-immuneBlast', 'def-block', 'def-nimble', 'def-outmaneuver',
+  'def-dodge', 'def-shield', 'def-suppression', 'def-surge',
   'addAttackBtn', 'attacksList', 'resultsList', 'trialsLabel', 'quoteLine',
   'exportAllBtn', 'importAllBtn', 'importAllFile',
 ];
@@ -91,7 +92,9 @@ setTimeout(() => {
   nameInput.value = 'Stormtrooper Squad';
   nameInput.dispatchEvent({ type: 'input' });
 
-  const [dupBtn, downloadBtn, uploadBtn] = firstCard.querySelectorAll('.icon-mini-btn');
+  // Toolbar order is now: moveUp, moveDown, duplicate, download, upload, remove.
+  const firstToolbar = firstCard.querySelectorAll('.icon-mini-btn');
+  const [dupBtn, downloadBtn, uploadBtn] = [firstToolbar[2], firstToolbar[3], firstToolbar[4]];
 
   // 2) Download it -> capture the JSON that would have been written to disk.
   downloadBtn.click();
@@ -108,8 +111,8 @@ setTimeout(() => {
 
   const imported = Object.assign({}, exported, { name: 'Uploaded Squad', black: 7, criticalX: 2 });
   const secondToolbar = secondCard.querySelectorAll('.icon-mini-btn');
-  const secondUploadBtn = secondToolbar[2];
-  const fileInput = secondCard.querySelectorAll('.icon-mini-btn')[2].parentNode.children.find(c => c.tagName === 'input' && c._attrs.type === 'file');
+  const secondUploadBtn = secondToolbar[4];
+  const fileInput = secondToolbar[4].parentNode.children.find(c => c.tagName === 'input' && c._attrs.type === 'file');
   fileInput.files = [{ _text: JSON.stringify(imported) }];
   fileInput.dispatchEvent({ type: 'change' });
 

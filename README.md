@@ -48,14 +48,17 @@ on GitHub Pages.
   and they auto-expand if the attack already has any of them set — e.g.
   loading a saved attacker with Critical X set opens its Keywords section
   automatically.
-- **Save / load / duplicate an attacker**: each attack card has a small
-  toolbar — ⧉ duplicates it into a new card right after itself, ⬇
-  downloads its full configuration as a `.json` file, and ⬆ loads a
-  previously-downloaded file back into *that* card (overwriting only it).
-  Handy for a squad you'll reuse across attacks or sessions: build it once,
-  download it, then upload the same file into attack #2, #3, etc. The
-  format is a plain JSON object (`{"schema":"legion-targeter-attacker", ...}`)
-  — safe to hand-edit or version-control.
+- **Reorder / save / load / duplicate an attacker**: each attack card has a
+  small toolbar — ▲/▼ move that attack earlier or later in the sequence
+  (order matters: token depletion, Nimble regen, and Blast/Cover
+  interactions all depend on which attack happens first), ⧉ duplicates it
+  into a new card right after itself, 💾 downloads its full configuration
+  as a `.json` file, and 📂 loads a previously-downloaded file back into
+  *that* card (overwriting only it). Handy for a squad you'll reuse across
+  attacks or sessions: build it once, download it, then upload the same
+  file into attack #2, #3, etc. The format is a plain JSON object
+  (`{"schema":"legion-targeter-attacker", ...}`) — safe to hand-edit or
+  version-control.
 
 ## How it works
 
@@ -75,16 +78,70 @@ attack 3 has none left) is modeled correctly, and "chance to kill after
 attack N" is a true cumulative probability, not an independent per-attack
 estimate.
 
+## Keywords modeled
+
+Attacker/weapon: Critical X, Precise X, Sharpshooter X, Impact X, Pierce X,
+Downgrade Defense Dice X, Ram X, High Velocity, Suppressive, Blast (ignores
+the defender's cover, terrain or keyword-granted, unless it has
+Immune: Blast), Marksman (spend Aim tokens to convert Blank→Hit or
+Hit→Crit), and Jar'Kai Mastery (the same conversions, spending the
+attacker's own Dodge tokens instead — only on a Melee attack). Each attack
+card also has a **Melee attack** toggle, since several defensive keywords
+below (and Jar'Kai Mastery) only apply to one attack type or the other.
+
+Defender/unit: Cover (terrain: none/light/heavy) and Cover X (a keyword
+that adds to the cover tier, capped at heavy — e.g. the T-47 Airspeeder's
+Cover 1), Low Profile, Armor / Armor X, Impervious, Danger Sense X, Uncanny
+Luck X, Upgrade Defense Dice X, Immune: Pierce, Immune: Blast, Block (gains
+Surge:Block for the rest of the attack if it spends 1+ Dodge), Nimble
+(regains 1 Dodge token after defending if it spent 1+), and Outmaneuver
+(leftover Dodge tokens may also cancel Crit results, not just hits). Cover
+(terrain, Cover X, and the Suppression bump), Shield tokens, and Danger
+Sense X are all Ranged-only per RAW, so they have no effect when an
+attack's Melee toggle is on.
+
+### Marksman / Jar'Kai Mastery: how the "smart spend" works
+
+Both keywords let the attacker upgrade its own dice (Blank→Hit or
+Hit→Crit, 1 point each — spending 2 points as one of each nets a
+Blank→Crit, so that combo doesn't need separate handling) right after
+Convert Attack Surges. The reserved budget is a single number you set
+(`Marksman: Aim spent` / `Jar'Kai Mastery: Dodge spent`); the engine then
+decides *how* to spend it on each simulated trial, rather than you having
+to pre-commit to an exact split of Blank→Hit vs. Hit→Crit:
+
+- With no apparent hit-cancelling defense in play (no Cover, no Armor, no
+  live Dodge pool), it spends on Blank→Hit first — that's a guaranteed
+  net-positive conversion regardless of what happens later.
+- Once the defender has Cover, Armor, or Dodge tokens available, it
+  spends on Hit→Crit first instead, since only Crit results are immune to
+  Cover Pool cancellation, Dodge spending, and Armor X.
+
+This is a greedy per-trial heuristic, not an exhaustive solver — it can
+be a little conservative in Block-heavy matchups (converting to Crit also
+exposes that result to Block's crits-first cancellation), but it tracks
+real optimal play closely in the more common case where Cover/Armor/Dodge
+are the bigger threat.
+
+Note: "Speeder" itself is a movement keyword with no defensive effect —
+if you were thinking of a speeder-type vehicle's Cover 1 and Immune: Pierce
+(e.g. the T-47 Airspeeder), those are two separate keywords (Cover X and
+Immune: Pierce) that unit happens to also have; set them individually.
+
 ## Documented simplifications
 
-This models the "core" defensive keyword set well but intentionally
-leaves out hero-specific / conditional-regen keywords (Nimble, Outmaneuver,
-Block, Deflect, Soresu Mastery, Guardian, Backup, etc.) and melee-only
-gating on Shield tokens. Attacker tokens (Aim/Surge/Observe) are set
-per-attack (they're spent fresh each activation); defender tokens
-(Dodge/Shield/Suppression/Surge) are one shared pool across the whole
-attack sequence, matching how they persist in the real game until spent or
-removed in the End Phase.
+This intentionally leaves out hero-specific counter-attack keywords that
+deal wounds back to the attacker (Deflect, Soresu Mastery) and
+Guardian/Backup (which redirect an attack to a different unit) — those
+are out of scope for a calculator focused on the defender's own chance to
+be killed. Shield tokens are usable on any attack (not gated to Ranged
+only). Attacker tokens (Aim/Surge/Observe) are set per-attack (they're
+spent fresh each activation); defender tokens (Dodge/Shield/Suppression/
+Surge) are one shared pool across the whole attack sequence, matching how
+they persist in the real game until spent or removed in the End Phase —
+this also means keywords that key off "spent a Dodge token this attack"
+(Block, Nimble) and the attack order itself (drag attacks up/down with the
+▲/▼ buttons) can meaningfully change the outcome.
 
 Dice faces and the full attack sequence (Roll → Reroll → Convert Surges →
 Apply Dodge and Cover → Modify Attack Dice → Roll/Modify Defense Dice →
