@@ -124,6 +124,79 @@
     });
   }
 
+  // Fields that count as "active" for the Tokens / Keywords badges and
+  // auto-open decision, and the JSON export/import shape for an attacker.
+  const ATTACKER_TOKEN_KEYS = ['surge', 'aim', 'observe'];
+  const ATTACKER_KEYWORD_NUMERIC_KEYS = [
+    'criticalX', 'preciseX', 'sharpshooterX', 'impactX', 'pierceX', 'downgradeX', 'ramX',
+  ];
+  const ATTACKER_KEYWORD_BOOL_KEYS = ['highVelocity', 'suppressive'];
+  const ATTACKER_SCHEMA = 'legion-targeter-attacker';
+
+  function countActive(attack, numericKeys, boolKeys) {
+    let n = 0;
+    (numericKeys || []).forEach((k) => { if (attack[k]) n++; });
+    (boolKeys || []).forEach((k) => { if (attack[k]) n++; });
+    return n;
+  }
+
+  // The data fields that define an attacker, deliberately excluding id/name
+  // so callers decide those independently (duplicate vs. import both reuse this).
+  function attackFields(attack) {
+    return {
+      red: attack.red, black: attack.black, white: attack.white,
+      surgeConv: attack.surgeConv,
+      tokens: Object.assign({ surge: 0, aim: 0, observe: 0 }, attack.tokens),
+      criticalX: attack.criticalX, preciseX: attack.preciseX, sharpshooterX: attack.sharpshooterX,
+      impactX: attack.impactX, pierceX: attack.pierceX, downgradeX: attack.downgradeX, ramX: attack.ramX,
+      highVelocity: attack.highVelocity, suppressive: attack.suppressive,
+    };
+  }
+
+  function serializeAttack(attack) {
+    return Object.assign({ schema: ATTACKER_SCHEMA, version: 1, name: attack.name }, attackFields(attack));
+  }
+
+  function applyImportedData(attack, data) {
+    if (!data || typeof data !== 'object') throw new Error('Not a valid attacker file.');
+    const fresh = makeAttack(data.name || attack.name, {
+      red: numOr(data.red, 0), black: numOr(data.black, 0), white: numOr(data.white, 0),
+      surgeConv: ['none', 'hit', 'crit'].includes(data.surgeConv) ? data.surgeConv : 'none',
+      tokens: {
+        surge: numOr(data.tokens && data.tokens.surge, 0),
+        aim: numOr(data.tokens && data.tokens.aim, 0),
+        observe: numOr(data.tokens && data.tokens.observe, 0),
+      },
+      criticalX: numOr(data.criticalX, 0), preciseX: numOr(data.preciseX, 0),
+      sharpshooterX: numOr(data.sharpshooterX, 0), impactX: numOr(data.impactX, 0),
+      pierceX: numOr(data.pierceX, 0), downgradeX: numOr(data.downgradeX, 0), ramX: numOr(data.ramX, 0),
+      highVelocity: !!data.highVelocity, suppressive: !!data.suppressive,
+    });
+    // Keep the same id (and thus the same card slot) as the card being
+    // overwritten, so "upload" replaces this attack in place.
+    fresh.id = attack.id;
+    return fresh;
+  }
+
+  function numOr(v, fallback) {
+    const n = parseInt(v, 10);
+    return isNaN(n) ? fallback : Math.max(0, n);
+  }
+
+  function downloadJson(filename, dataObj) {
+    const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = el('a', { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function safeFilename(name) {
+    return (name || 'attacker').trim().replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '') || 'attacker';
+  }
+
   function renderAttackCard(attack) {
     const card = el('div', { class: 'attack-card' });
 
@@ -132,14 +205,63 @@
     nameInput.value = attack.name;
     nameInput.addEventListener('input', () => { attack.name = nameInput.value; recompute(); });
     header.appendChild(nameInput);
-    const removeBtn = el('button', { class: 'remove-attack-btn', title: 'Remove attack', type: 'button' });
+
+    const toolbar = el('div', { class: 'card-toolbar' });
+
+    const dupBtn = el('button', { class: 'icon-mini-btn', title: 'Duplicate this attacker', type: 'button' });
+    dupBtn.textContent = '⧉';
+    dupBtn.addEventListener('click', () => {
+      const copy = makeAttack(attack.name + ' copy', attackFields(attack));
+      const idx = state.attacks.findIndex((a) => a.id === attack.id);
+      state.attacks.splice(idx + 1, 0, copy);
+      renderAttacks();
+      recompute();
+    });
+    toolbar.appendChild(dupBtn);
+
+    const downloadBtn = el('button', { class: 'icon-mini-btn', title: 'Download this attacker as JSON', type: 'button' });
+    downloadBtn.textContent = '⬇';
+    downloadBtn.addEventListener('click', () => {
+      downloadJson(safeFilename(attack.name) + '.json', serializeAttack(attack));
+    });
+    toolbar.appendChild(downloadBtn);
+
+    const uploadBtn = el('button', { class: 'icon-mini-btn', title: 'Load an attacker JSON into this card', type: 'button' });
+    uploadBtn.textContent = '⬆';
+    const fileInput = el('input', { type: 'file', accept: 'application/json,.json', style: 'display:none' });
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(String(reader.result));
+          const updated = applyImportedData(attack, data);
+          const idx = state.attacks.findIndex((a) => a.id === attack.id);
+          state.attacks[idx] = updated;
+          renderAttacks();
+          recompute();
+        } catch (e) {
+          window.alert('Could not load that file as an attacker: ' + e.message);
+        }
+        fileInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    toolbar.appendChild(uploadBtn);
+    toolbar.appendChild(fileInput);
+
+    const removeBtn = el('button', { class: 'icon-mini-btn danger', title: 'Remove attack', type: 'button' });
     removeBtn.textContent = '✕';
     removeBtn.addEventListener('click', () => {
       state.attacks = state.attacks.filter((a) => a.id !== attack.id);
       renderAttacks();
       recompute();
     });
-    header.appendChild(removeBtn);
+    toolbar.appendChild(removeBtn);
+
+    header.appendChild(toolbar);
     card.appendChild(header);
 
     // Dice pool
@@ -157,31 +279,57 @@
     ], (v) => { attack.surgeConv = v; recompute(); }));
     card.appendChild(surgeRow);
 
-    // Tokens
-    card.appendChild(el('h3', { html: 'Tokens' }));
+    // Tokens (collapsible)
+    const tokenCount = countActive(attack.tokens, ATTACKER_TOKEN_KEYS, []);
+    const tokenDetails = el('details', { class: 'collapsible' });
+    if (tokenCount > 0) tokenDetails.setAttribute('open', '');
+    const tokenSummary = el('summary', {});
+    tokenSummary.appendChild(document.createTextNode('Tokens '));
+    if (tokenCount > 0) {
+      const badge = el('span', { class: 'badge' });
+      badge.textContent = String(tokenCount);
+      tokenSummary.appendChild(badge);
+    }
+    tokenDetails.appendChild(tokenSummary);
+    const tokenBody = el('div', { class: 'details-body' });
     const tokenRow = el('div', { class: 'field-row' });
     tokenRow.appendChild(stepperField('Surge', attack.tokens.surge, 0, (v) => { attack.tokens.surge = v; recompute(); }));
     tokenRow.appendChild(stepperField('Aim', attack.tokens.aim, 0, (v) => { attack.tokens.aim = v; recompute(); }));
     tokenRow.appendChild(stepperField('Observe', attack.tokens.observe, 0, (v) => { attack.tokens.observe = v; recompute(); }, '(enemy obs. tokens spent)'));
-    card.appendChild(tokenRow);
+    tokenBody.appendChild(tokenRow);
+    tokenDetails.appendChild(tokenBody);
+    card.appendChild(tokenDetails);
 
-    // Keywords
-    card.appendChild(el('h3', { html: 'Keywords' }));
+    // Keywords (collapsible)
+    const kwCount = countActive(attack, ATTACKER_KEYWORD_NUMERIC_KEYS, ATTACKER_KEYWORD_BOOL_KEYS);
+    const kwDetails = el('details', { class: 'collapsible' });
+    if (kwCount > 0) kwDetails.setAttribute('open', '');
+    const kwSummary = el('summary', {});
+    kwSummary.appendChild(document.createTextNode('Keywords '));
+    if (kwCount > 0) {
+      const badge = el('span', { class: 'badge' });
+      badge.textContent = String(kwCount);
+      kwSummary.appendChild(badge);
+    }
+    kwDetails.appendChild(kwSummary);
+    const kwBody = el('div', { class: 'details-body' });
     const kwRow1 = el('div', { class: 'field-row' });
     kwRow1.appendChild(stepperField('Critical X', attack.criticalX, 0, (v) => { attack.criticalX = v; recompute(); }));
     kwRow1.appendChild(stepperField('Precise X', attack.preciseX, 0, (v) => { attack.preciseX = v; recompute(); }));
     kwRow1.appendChild(stepperField('Sharpshooter X', attack.sharpshooterX, 0, (v) => { attack.sharpshooterX = v; recompute(); }));
-    card.appendChild(kwRow1);
+    kwBody.appendChild(kwRow1);
     const kwRow2 = el('div', { class: 'field-row' });
     kwRow2.appendChild(stepperField('Impact X', attack.impactX, 0, (v) => { attack.impactX = v; recompute(); }, '(vs Armor)'));
     kwRow2.appendChild(stepperField('Pierce X', attack.pierceX, 0, (v) => { attack.pierceX = v; recompute(); }));
     kwRow2.appendChild(stepperField('Downgrade Def. Dice X', attack.downgradeX, 0, (v) => { attack.downgradeX = v; recompute(); }));
     kwRow2.appendChild(stepperField('Ram X', attack.ramX, 0, (v) => { attack.ramX = v; recompute(); }, '(blanks then hits → crit)'));
-    card.appendChild(kwRow2);
+    kwBody.appendChild(kwRow2);
     const kwRow3 = el('div', { class: 'field-row' });
     kwRow3.appendChild(checkboxField('High Velocity (no Dodge)', attack.highVelocity, (v) => { attack.highVelocity = v; recompute(); }));
     kwRow3.appendChild(checkboxField('Suppressive (adds 1 suppression after)', attack.suppressive, (v) => { attack.suppressive = v; recompute(); }));
-    card.appendChild(kwRow3);
+    kwBody.appendChild(kwRow3);
+    kwDetails.appendChild(kwBody);
+    card.appendChild(kwDetails);
 
     return card;
   }
@@ -306,6 +454,14 @@
     state.trials = parseInt(e.target.value, 10);
     recompute();
   });
+
+  const themeSelect = document.getElementById('themeSelect');
+  if (themeSelect && window.LegionTheme) {
+    themeSelect.value = window.LegionTheme.get();
+    themeSelect.addEventListener('change', (e) => {
+      window.LegionTheme.set(e.target.value);
+    });
+  }
 
   wireDefenderInputs();
   renderAttacks();

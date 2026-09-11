@@ -1,6 +1,8 @@
+/* Dark palette is the default/fallback. */
 :root {
   --bg: #10131a;
   --panel: #171b24;
+  --panel-alt: #12151d;
   --panel-border: #2a3040;
   --text: #e8ebf2;
   --muted: #8a91a3;
@@ -11,6 +13,54 @@
   --input-bg: #0d1017;
   --input-border: #33394a;
   --radius: 8px;
+}
+
+/* System preference: light, and the user hasn't forced dark. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4f5f8;
+    --panel: #ffffff;
+    --panel-alt: #f0f1f5;
+    --panel-border: #dde1e8;
+    --text: #1b1e27;
+    --muted: #6b7280;
+    --accent: #c5361f;
+    --accent-2: #2563eb;
+    --good: #16a34a;
+    --warn: #b45309;
+    --input-bg: #ffffff;
+    --input-border: #ccd1db;
+  }
+}
+
+/* Explicit user choice wins over system preference in both directions. */
+:root[data-theme="light"] {
+  --bg: #f4f5f8;
+  --panel: #ffffff;
+  --panel-alt: #f0f1f5;
+  --panel-border: #dde1e8;
+  --text: #1b1e27;
+  --muted: #6b7280;
+  --accent: #c5361f;
+  --accent-2: #2563eb;
+  --good: #16a34a;
+  --warn: #b45309;
+  --input-bg: #ffffff;
+  --input-border: #ccd1db;
+}
+:root[data-theme="dark"] {
+  --bg: #10131a;
+  --panel: #171b24;
+  --panel-alt: #12151d;
+  --panel-border: #2a3040;
+  --text: #e8ebf2;
+  --muted: #8a91a3;
+  --accent: #d63b3b;
+  --accent-2: #3b7fd6;
+  --good: #3bd67a;
+  --warn: #d6a93b;
+  --input-bg: #0d1017;
+  --input-border: #33394a;
 }
 
 * { box-sizing: border-box; }
@@ -171,13 +221,15 @@ body {
   border-radius: var(--radius);
   padding: 12px 14px;
   margin-bottom: 14px;
-  background: #12151d;
+  background: var(--panel-alt);
 }
 .attack-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 .attack-card-header input.attack-name {
   background: transparent;
@@ -185,23 +237,13 @@ body {
   color: var(--text);
   font-weight: 600;
   font-size: 14px;
-  width: 60%;
+  flex: 1 1 100px;
+  min-width: 0;
 }
 .attack-card-header input.attack-name:focus {
   outline: 1px solid var(--accent-2);
   background: var(--input-bg);
 }
-.remove-attack-btn {
-  background: transparent;
-  border: 1px solid var(--input-border);
-  color: var(--muted);
-  border-radius: 6px;
-  width: 26px;
-  height: 26px;
-  cursor: pointer;
-}
-.remove-attack-btn:hover { color: var(--accent); border-color: var(--accent); }
-
 .dice-swatch { font-weight: 600; }
 .dice-swatch.red { color: #ff6b6b; }
 .dice-swatch.black { color: #c8c8d0; }
@@ -212,7 +254,7 @@ body {
   border-radius: var(--radius);
   padding: 12px 14px;
   margin-bottom: 14px;
-  background: #12151d;
+  background: var(--panel-alt);
 }
 .result-card h4 {
   margin: 0 0 8px;
@@ -258,6 +300,73 @@ body {
   padding: 20px 0;
   text-align: center;
 }
+
+/* ==========================================================================
+   Collapsible sections (Tokens / Keywords)
+   ========================================================================== */
+details.collapsible {
+  border-top: 1px solid var(--panel-border);
+  margin-top: 10px;
+  padding-top: 2px;
+}
+details.collapsible summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+details.collapsible summary::-webkit-details-marker { display: none; }
+details.collapsible summary::before {
+  content: '▸';
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+details.collapsible[open] summary::before { transform: rotate(90deg); }
+details.collapsible summary:hover { color: var(--text); }
+details.collapsible summary .badge {
+  background: var(--accent-2);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 7px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+details.collapsible .details-body { padding-bottom: 8px; }
+
+/* ==========================================================================
+   Attack card toolbar (duplicate / download / upload / remove)
+   ========================================================================== */
+.card-toolbar {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.icon-mini-btn {
+  background: transparent;
+  border: 1px solid var(--input-border);
+  color: var(--muted);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-mini-btn:hover { color: var(--accent-2); border-color: var(--accent-2); }
+.icon-mini-btn.danger:hover { color: var(--accent); border-color: var(--accent); }
 
 /* ==========================================================================
    Site nav (shared between index.html and about.html)

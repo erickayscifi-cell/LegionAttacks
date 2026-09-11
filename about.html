@@ -7,6 +7,17 @@
 <meta name="description" content="About the author of Legion Targeter.">
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>🎲</text></svg>">
+<script>
+  // Applied before paint so there's no flash of the wrong theme. The
+  // selector itself lives in the calculator's Settings panel; this page
+  // just respects whatever was last chosen there.
+  (function () {
+    var KEY = 'legion-targeter-theme';
+    var stored = 'system';
+    try { stored = localStorage.getItem(KEY) || 'system'; } catch (e) {}
+    if (stored === 'light' || stored === 'dark') document.documentElement.setAttribute('data-theme', stored);
+  })();
+</script>
 </head>
 <body>
 

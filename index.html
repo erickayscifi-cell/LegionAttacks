@@ -7,6 +7,27 @@
 <meta name="description" content="Chance-to-kill calculator for Star Wars: Legion." />
 <link rel="stylesheet" href="style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>🎲</text></svg>">
+<script>
+  // Applied before paint so there's no flash of the wrong theme.
+  (function () {
+    var KEY = 'legion-targeter-theme';
+    function apply(pref) {
+      if (pref === 'light' || pref === 'dark') document.documentElement.setAttribute('data-theme', pref);
+      else document.documentElement.removeAttribute('data-theme');
+    }
+    var stored = 'system';
+    try { stored = localStorage.getItem(KEY) || 'system'; } catch (e) {}
+    apply(stored);
+    window.LegionTheme = {
+      get: function () { return stored; },
+      set: function (pref) {
+        stored = pref;
+        try { localStorage.setItem(KEY, pref); } catch (e) {}
+        apply(pref);
+      },
+    };
+  })();
+</script>
 </head>
 <body>
   <nav class="site-nav">
@@ -26,6 +47,13 @@
 
   <div id="settingsPanel" class="settings-panel hidden">
     <h3>Settings</h3>
+    <label>Theme
+      <select id="themeSelect">
+        <option value="system">System</option>
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+      </select>
+    </label>
     <label>Simulation trials
       <select id="trialsSelect">
         <option value="5000">5,000 (fast)</option>
@@ -72,45 +100,53 @@
         </label>
       </div>
 
-      <h3>Keywords</h3>
-      <div class="field-row">
-        <label class="field checkbox-field">
-          <input type="checkbox" id="def-armorEnabled" /> Armor
-        </label>
-        <label class="field">Armor X <span class="hint">(blank = unlimited)</span>
-          <input type="number" id="def-armorX" min="0" placeholder="∞" />
-        </label>
-      </div>
-      <div class="field-row">
-        <label class="field checkbox-field">
-          <input type="checkbox" id="def-impervious" /> Impervious
-        </label>
-        <label class="field">Danger Sense X
-          <input type="number" id="def-dangerSenseX" min="0" value="0" />
-        </label>
-        <label class="field">Uncanny Luck X
-          <input type="number" id="def-uncannyLuckX" min="0" value="0" />
-        </label>
-        <label class="field">Upgrade Defense Dice X
-          <input type="number" id="def-upgradeX" min="0" value="0" />
-        </label>
-      </div>
+      <details class="collapsible" id="def-keywords-details">
+        <summary>Keywords</summary>
+        <div class="details-body">
+          <div class="field-row">
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-armorEnabled" /> Armor
+            </label>
+            <label class="field">Armor X <span class="hint">(blank = unlimited)</span>
+              <input type="number" id="def-armorX" min="0" placeholder="∞" />
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field checkbox-field">
+              <input type="checkbox" id="def-impervious" /> Impervious
+            </label>
+            <label class="field">Danger Sense X
+              <input type="number" id="def-dangerSenseX" min="0" value="0" />
+            </label>
+            <label class="field">Uncanny Luck X
+              <input type="number" id="def-uncannyLuckX" min="0" value="0" />
+            </label>
+            <label class="field">Upgrade Defense Dice X
+              <input type="number" id="def-upgradeX" min="0" value="0" />
+            </label>
+          </div>
+        </div>
+      </details>
 
-      <h3>Token Pool <span class="hint">(shared across all attacks below, depletes as spent)</span></h3>
-      <div class="field-row">
-        <label class="field">Dodge
-          <input type="number" id="def-dodge" min="0" value="0" />
-        </label>
-        <label class="field">Shield
-          <input type="number" id="def-shield" min="0" value="0" />
-        </label>
-        <label class="field">Suppression
-          <input type="number" id="def-suppression" min="0" value="0" />
-        </label>
-        <label class="field">Surge <span class="hint">(defense)</span>
-          <input type="number" id="def-surge" min="0" value="0" />
-        </label>
-      </div>
+      <details class="collapsible" id="def-tokens-details">
+        <summary>Token Pool <span class="hint">(shared across all attacks, depletes as spent)</span></summary>
+        <div class="details-body">
+          <div class="field-row">
+            <label class="field">Dodge
+              <input type="number" id="def-dodge" min="0" value="0" />
+            </label>
+            <label class="field">Shield
+              <input type="number" id="def-shield" min="0" value="0" />
+            </label>
+            <label class="field">Suppression
+              <input type="number" id="def-suppression" min="0" value="0" />
+            </label>
+            <label class="field">Surge <span class="hint">(defense)</span>
+              <input type="number" id="def-surge" min="0" value="0" />
+            </label>
+          </div>
+        </div>
+      </details>
     </section>
 
     <section class="panel attacks-panel">

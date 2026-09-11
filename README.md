@@ -21,6 +21,25 @@ on GitHub Pages.
 - `engine.js` — the dice/combat simulation engine (also runnable in Node for testing)
 - `app.js` — UI wiring (state, rendering, recompute-on-change)
 
+## UI features
+
+- **Theme**: Settings (gear icon) has a Dark / Light / System selector,
+  saved in `localStorage` and applied on both pages before first paint (no
+  flash of the wrong theme).
+- **Compact layout**: each attack's Tokens and Keywords are collapsed
+  behind `<details>` sections (a small badge shows how many are non-zero),
+  and they auto-expand if the attack already has any of them set — e.g.
+  loading a saved attacker with Critical X set opens its Keywords section
+  automatically.
+- **Save / load / duplicate an attacker**: each attack card has a small
+  toolbar — ⧉ duplicates it into a new card right after itself, ⬇
+  downloads its full configuration as a `.json` file, and ⬆ loads a
+  previously-downloaded file back into *that* card (overwriting only it).
+  Handy for a squad you'll reuse across attacks or sessions: build it once,
+  download it, then upload the same file into attack #2, #3, etc. The
+  format is a plain JSON object (`{"schema":"legion-targeter-attacker", ...}`)
+  — safe to hand-edit or version-control.
+
 ## How it works
 
 Each attack is resolved as a Monte Carlo simulation (20,000 trials by
