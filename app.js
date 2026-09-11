@@ -614,7 +614,7 @@
   const QUOTES_BAD = [
     'I have a bad feeling about this.',
     'The odds of successfully surviving an attack on an Imperial Star Destroyer are approximately—',
-    'You might want to quit while you’re ahead.',
+    'You might want to quit while you’re behind.',
   ];
   const QUOTES_GOOD = [
     'In my experience, there is no such thing as luck.',
