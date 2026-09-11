@@ -30,19 +30,21 @@
 </script>
 </head>
 <body>
-  <nav class="site-nav">
-    <div class="brand">Legion Targeter <span class="brand-subtitle">Telling you the odds</span></div>
-    <div class="modes">
-      <a class="link active" href="index.html">Calculator</a>
-      <a class="link" href="about.html">About</a>
-    </div>
-  </nav>
   <header class="app-header">
-    <div class="header-inner">
-      <h1>Legion Targeter</h1>
-      <p class="subtitle">Chance-to-kill calculator for Star Wars: Legion — sequence multiple attacks against one defender and track a limited token pool across them.</p>
+    <div class="header-left">
+      <div class="brand-row">
+        <h1>Legion Targeter</h1>
+        <span class="brand-subtitle">Telling you the odds</span>
+      </div>
+      <p class="subtitle">Chance-to-kill calculator for Star Wars: Legion.</p>
     </div>
-    <button id="gearBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+    <div class="header-right">
+      <nav class="modes">
+        <a class="link active" href="index.html">Calculator</a>
+        <a class="link" href="about.html">About</a>
+      </nav>
+      <button id="gearBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+    </div>
   </header>
 
   <div id="settingsPanel" class="settings-panel hidden">
@@ -62,7 +64,14 @@
         <option value="100000">100,000 (slow, most precise)</option>
       </select>
     </label>
-    <button id="closeSettings" class="secondary-btn">Close</button>
+    <div class="settings-divider"></div>
+    <p class="hint" style="margin: 0 0 8px;">Save or load the defender and every attack together, as one file.</p>
+    <div class="settings-actions">
+      <button id="exportAllBtn" class="secondary-btn">⬇ Export All</button>
+      <button id="importAllBtn" class="secondary-btn">⬆ Import All</button>
+      <input type="file" id="importAllFile" accept="application/json,.json" style="display:none" />
+    </div>
+    <button id="closeSettings" class="secondary-btn" style="margin-top: 10px;">Close</button>
   </div>
 
   <main class="layout">

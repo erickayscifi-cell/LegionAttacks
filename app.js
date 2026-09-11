@@ -151,9 +151,10 @@
     return Object.assign({ schema: ATTACKER_SCHEMA, version: 1, name: attack.name }, attackFields(attack));
   }
 
-  function applyImportedData(attack, data) {
-    if (!data || typeof data !== 'object') throw new Error('Not a valid attacker file.');
-    const fresh = makeAttack(data.name || attack.name, {
+  // Shared by single-attack import and full-state import.
+  function attackOverridesFromData(data) {
+    data = data || {};
+    return {
       red: numOr(data.red, 0), black: numOr(data.black, 0), white: numOr(data.white, 0),
       surgeConv: ['none', 'hit', 'crit'].includes(data.surgeConv) ? data.surgeConv : 'none',
       tokens: {
@@ -165,7 +166,12 @@
       sharpshooterX: numOr(data.sharpshooterX, 0), impactX: numOr(data.impactX, 0),
       pierceX: numOr(data.pierceX, 0), downgradeX: numOr(data.downgradeX, 0), ramX: numOr(data.ramX, 0),
       highVelocity: !!data.highVelocity, suppressive: !!data.suppressive,
-    });
+    };
+  }
+
+  function applyImportedData(attack, data) {
+    if (!data || typeof data !== 'object') throw new Error('Not a valid attacker file.');
+    const fresh = makeAttack(data.name || attack.name, attackOverridesFromData(data));
     // Keep the same id (and thus the same card slot) as the card being
     // overwritten, so "upload" replaces this attack in place.
     fresh.id = attack.id;
@@ -175,6 +181,80 @@
   function numOr(v, fallback) {
     const n = parseInt(v, 10);
     return isNaN(n) ? fallback : Math.max(0, n);
+  }
+
+  // ---------------- full export / import (defender + all attacks) ----------------
+  const FULL_SCHEMA = 'legion-targeter-full';
+
+  function serializeDefender(d) {
+    return {
+      health: d.health, defenseDie: d.defenseDie, defenseSurgeConv: d.defenseSurgeConv,
+      cover: d.cover, lowProfile: d.lowProfile,
+      armorEnabled: d.armorEnabled, armorX: d.armorX,
+      impervious: d.impervious, dangerSenseX: d.dangerSenseX, uncannyLuckX: d.uncannyLuckX,
+      upgradeX: d.upgradeX, dodge: d.dodge, shield: d.shield, suppression: d.suppression, surge: d.surge,
+    };
+  }
+
+  function serializeFullState() {
+    return {
+      schema: FULL_SCHEMA,
+      version: 1,
+      defender: serializeDefender(state.defender),
+      attacks: state.attacks.map(serializeAttack),
+    };
+  }
+
+  function defenderFromData(dd) {
+    dd = dd || {};
+    return {
+      health: Math.max(1, numOr(dd.health, 6)),
+      defenseDie: dd.defenseDie === 'red' ? 'red' : 'white',
+      defenseSurgeConv: dd.defenseSurgeConv === 'block' ? 'block' : 'none',
+      cover: ['none', 'light', 'heavy'].includes(dd.cover) ? dd.cover : 'none',
+      lowProfile: !!dd.lowProfile,
+      armorEnabled: !!dd.armorEnabled,
+      armorX: (dd.armorX === null || dd.armorX === undefined || dd.armorX === '') ? null : numOr(dd.armorX, 0),
+      impervious: !!dd.impervious,
+      dangerSenseX: numOr(dd.dangerSenseX, 0),
+      uncannyLuckX: numOr(dd.uncannyLuckX, 0),
+      upgradeX: numOr(dd.upgradeX, 0),
+      dodge: numOr(dd.dodge, 0),
+      shield: numOr(dd.shield, 0),
+      suppression: numOr(dd.suppression, 0),
+      surge: numOr(dd.surge, 0),
+    };
+  }
+
+  function setDefenderFieldsFromState() {
+    const d = state.defender;
+    document.getElementById('def-health').value = d.health;
+    document.getElementById('def-defenseDie').value = d.defenseDie;
+    document.getElementById('def-defenseSurgeConv').value = d.defenseSurgeConv;
+    document.getElementById('def-cover').value = d.cover;
+    document.getElementById('def-lowProfile').checked = d.lowProfile;
+    document.getElementById('def-armorEnabled').checked = d.armorEnabled;
+    document.getElementById('def-armorX').value = d.armorX === null ? '' : d.armorX;
+    document.getElementById('def-impervious').checked = d.impervious;
+    document.getElementById('def-dangerSenseX').value = d.dangerSenseX;
+    document.getElementById('def-uncannyLuckX').value = d.uncannyLuckX;
+    document.getElementById('def-upgradeX').value = d.upgradeX;
+    document.getElementById('def-dodge').value = d.dodge;
+    document.getElementById('def-shield').value = d.shield;
+    document.getElementById('def-suppression').value = d.suppression;
+    document.getElementById('def-surge').value = d.surge;
+  }
+
+  function applyImportedFullState(data) {
+    if (!data || typeof data !== 'object') throw new Error('Not a valid Legion Targeter export.');
+    state.defender = defenderFromData(data.defender);
+    const importedAttacks = Array.isArray(data.attacks) ? data.attacks : [];
+    state.attacks = importedAttacks.length
+      ? importedAttacks.map((a) => makeAttack((a && a.name) || 'Attack', attackOverridesFromData(a)))
+      : [makeAttack('Attack 1')];
+    setDefenderFieldsFromState();
+    renderAttacks();
+    recompute();
   }
 
   function downloadJson(filename, dataObj) {
@@ -392,9 +472,10 @@
 
     const resultsList = document.getElementById('resultsList');
     resultsList.innerHTML = '';
-    const quoteLine = document.getElementById('quoteLine');
     if (attackConfigs.length === 0) {
       resultsList.appendChild(el('p', { class: 'empty-state', html: 'Add at least one attack to see results.' }));
+      clearTimeout(quoteTimer);
+      const quoteLine = document.getElementById('quoteLine');
       if (quoteLine) quoteLine.textContent = '';
       return;
     }
@@ -437,7 +518,18 @@
     totalCard.appendChild(totalRow);
     resultsList.appendChild(totalCard);
 
-    if (quoteLine) quoteLine.textContent = pickQuote(finalResult.chanceToKillCumulative * 100);
+    scheduleQuoteUpdate(finalResult.chanceToKillCumulative * 100);
+  }
+
+  // Quotes intentionally refresh on their own, slower timer than the main
+  // recompute, so mashing a spinner doesn't flicker the quote every 150ms.
+  let quoteTimer = null;
+  function scheduleQuoteUpdate(killPct) {
+    clearTimeout(quoteTimer);
+    quoteTimer = setTimeout(() => {
+      const quoteLine = document.getElementById('quoteLine');
+      if (quoteLine) quoteLine.textContent = pickQuote(killPct);
+    }, 500);
   }
 
   // ---------------- Star Wars flavor quotes ----------------
@@ -501,6 +593,27 @@
       window.LegionTheme.set(e.target.value);
     });
   }
+
+  document.getElementById('exportAllBtn').addEventListener('click', () => {
+    downloadJson('legion-targeter-export.json', serializeFullState());
+  });
+  document.getElementById('importAllBtn').addEventListener('click', () => {
+    document.getElementById('importAllFile').click();
+  });
+  document.getElementById('importAllFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        applyImportedFullState(JSON.parse(reader.result));
+      } catch (err) {
+        window.alert('Could not import file: ' + err.message);
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
 
   wireDefenderInputs();
   renderAttacks();

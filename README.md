@@ -31,11 +31,18 @@ on GitHub Pages.
 - **Flavor quote**: a Star Wars quote appears under the heading, picked
   from a bad/middle/good pool based on the final cumulative chance to kill
   (≤15% bad, ≥90% good, otherwise middle) — see the `QUOTES_*` arrays in
-  `app.js` to add or re-tier your own.
+  `app.js` to add or re-tier your own. The quote updates on its own ~500ms
+  debounce, separate from the (faster) results recompute, so mashing a
+  number spinner doesn't flicker it on every keystroke.
 
 - **Theme**: Settings (gear icon) has a Dark / Light / System selector,
   saved in `localStorage` and applied on both pages before first paint (no
   flash of the wrong theme).
+- **Full export / import**: Settings also has "Export All" / "Import All",
+  which save or load the defender *and every attack* together as one
+  `.json` file (`{"schema":"legion-targeter-full", ...}`) — for backing up
+  or sharing an entire matchup setup, as opposed to the per-attack
+  save/load below which handles one attacker at a time.
 - **Compact layout**: each attack's Tokens and Keywords are collapsed
   behind `<details>` sections (a small badge shows how many are non-zero),
   and they auto-expand if the attack already has any of them set — e.g.
